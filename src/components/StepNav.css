@@ -1,0 +1,71 @@
+.step-nav {
+  background: white;
+  border-bottom: 2px solid #ddd;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.step-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.step-group h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.step-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.step-btn {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-weight: 600;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.step-btn:hover {
+  border-color: #0066cc;
+  color: #0066cc;
+  background: #f0f7ff;
+}
+
+.step-btn.active {
+  border-color: #0066cc;
+  background: #0066cc;
+  color: white;
+}
+
+.step-divider {
+  width: 1px;
+  height: 60px;
+  background: #ddd;
+}
+
+.current-step {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border-left: 3px solid #0066cc;
+}
+
+.current-step p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #333;
+}
