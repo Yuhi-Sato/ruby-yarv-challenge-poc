@@ -1,459 +1,307 @@
 import type { StepConfig } from '../types'
 
-// Import Ruby stubs as raw strings
-import vmStep1Stub from '../ruby/stubs/vm_step1_stub.rb?raw'
-import vmStep2Stub from '../ruby/stubs/vm_step2_stub.rb?raw'
-import vmStep3Stub from '../ruby/stubs/vm_step3_stub.rb?raw'
-import vmStep4Stub from '../ruby/stubs/vm_step4_stub.rb?raw'
-import vmStep5Stub from '../ruby/stubs/vm_step5_stub.rb?raw'
-import vmStep6Stub from '../ruby/stubs/vm_step6_stub.rb?raw'
-import vmStep7Stub from '../ruby/stubs/vm_step7_stub.rb?raw'
-
-import compilerB1Stub from '../ruby/stubs/compiler_b1_stub.rb?raw'
-import compilerB2Stub from '../ruby/stubs/compiler_b2_stub.rb?raw'
-import compilerB3Stub from '../ruby/stubs/compiler_b3_stub.rb?raw'
-import compilerB4Stub from '../ruby/stubs/compiler_b4_stub.rb?raw'
-import compilerB5Stub from '../ruby/stubs/compiler_b5_stub.rb?raw'
+// Import combined stubs as raw strings
+import step1Stub from '../ruby/stubs/step1.rb?raw'
+import step2Stub from '../ruby/stubs/step2.rb?raw'
+import step3Stub from '../ruby/stubs/step3.rb?raw'
+import step4Stub from '../ruby/stubs/step4.rb?raw'
+import step5Stub from '../ruby/stubs/step5.rb?raw'
+import step6Stub from '../ruby/stubs/step6.rb?raw'
+import step7Stub from '../ruby/stubs/step7.rb?raw'
 
 export const STEPS: StepConfig[] = [
   {
     id: 1,
-    phase: 'VM',
-    title: 'Step 1: Putobject - Push literals onto the stack',
+    title: 'Step 1: Integer Literals',
     description: `
-## Step 1: Stack Operations
+## Step 1: Push Literals onto the Stack
 
 The YARV VM uses a **stack** to manage values during execution.
 
-### What is putobject?
+### VM: Putobject
 - **putobject** pushes a literal value (integer, boolean, nil) onto the stack
-- Example: the code \`42\` compiles to bytecode \`[Putobject(42), Leave]\`
-- The VM executes: push 42 onto stack → return stack top
+- Example: \`42\` compiles to bytecode \`[Putobject(42), Leave]\`
+- Stack API: \`vm.push(value)\` stores a value at the top of the stack
 
-### How does the stack work?
-- **SP (Stack Pointer)** tracks the next available slot
-- **vm.stack_push(value)**: store value at stack[sp], then increment sp
-- **vm.stack_pop()**: decrement sp, return stack[sp]
+### Compiler: compile_integer_node
+- \`Prism::IntegerNode\` represents a literal integer (e.g., \`42\`)
+- Emit a \`Putobject\` instruction carrying \`node.value\`
 
-Your Task: Implement the \`call\` method for Putobject to push @object onto the stack.
+### Your Task
+Implement both \`Putobject#call\` and \`compile_integer_node\`.
     `,
-    instructions: 'putobject - push literal value',
-    vmStub: vmStep1Stub,
-    compilerStub: '',
+    instructions: 'putobject · compile_integer_node',
+    stub: step1Stub,
     testCases: [
       { description: 'Push integer 42', source: '42', expected: 42 },
       { description: 'Push integer 100', source: '100', expected: 100 },
       { description: 'Push 0', source: '0', expected: 0 },
     ],
+    bytecodePreview: `0000 putobject 42
+0001 leave`,
   },
 
   {
     id: 2,
-    phase: 'VM',
-    title: 'Step 2: OptPlus - Add two numbers',
+    title: 'Step 2: Addition',
     description: `
-## Step 2: Arithmetic - Addition
+## Step 2: Arithmetic — Addition
 
-### What is opt_plus?
+### VM: OptPlus
 - **opt_plus** pops two values, adds them, and pushes the result
-- Example: \`1 + 2\` compiles to:
-  \`\`\`
-  Putobject(1)
-  Putobject(2)
-  OptPlus
-  Leave
-  \`\`\`
+- Stack is LIFO: for \`1 + 2\`, pop gets 2 first (b), then 1 (a)
+- Compute \`a + b\`, push result
 
-### Stack Order (CRITICAL!)
-- The stack is LIFO (Last In, First Out)
-- For \`1 + 2\`: stack holds [1, 2]
-- Pop twice: first get 2, then get 1
-- Compute: 1 + 2 = 3
+### Compiler: compile_binary_plus
+- \`Prism::CallNode\` with \`node.name == :+\`
+- \`node.receiver\` is the left operand, \`node.arguments.arguments[0]\` is the right
+- Compile both, then emit \`OptPlus\`
 
-Your Task: Implement \`call\` to pop b, pop a, push a + b.
+### Example Bytecode: \`1 + 2\`
+\`\`\`
+0000 putobject 1
+0001 putobject 2
+0002 opt_plus
+0003 leave
+\`\`\`
     `,
-    instructions: 'opt_plus - addition (+)',
-    vmStub: vmStep2Stub,
-    compilerStub: '',
+    instructions: 'opt_plus · compile_binary_plus',
+    stub: step2Stub,
     testCases: [
       { description: '1 + 2 = 3', source: '1 + 2', expected: 3 },
       { description: '10 + 5 = 15', source: '10 + 5', expected: 15 },
       { description: '0 + 0 = 0', source: '0 + 0', expected: 0 },
     ],
+    bytecodePreview: `0000 putobject 1
+0001 putobject 2
+0002 opt_plus
+0003 leave`,
   },
 
   {
     id: 3,
-    phase: 'VM',
-    title: 'Step 3: OptMinus - Subtract numbers',
+    title: 'Step 3: Subtraction',
     description: `
-## Step 3: Arithmetic - Subtraction
+## Step 3: Arithmetic — Subtraction
 
-### What is opt_minus?
-- **opt_minus** pops b, pops a, computes a - b, pushes result
-- Example: \`10 - 3\` = 7
+### VM: OptMinus
+- **opt_minus** pops b, pops a, computes \`a - b\`, pushes result
+- Order matters! a − b, **not** b − a
 
-### Order Matters!
-- Pop in LIFO order: b first, then a
-- Then compute: a - b (NOT b - a!)
+### Compiler: compile_binary_minus
+- Same pattern as \`compile_binary_plus\`, but emit \`OptMinus\`
 
-Your Task: Implement \`call\` to pop b, pop a, push a - b.
+### Example Bytecode: \`10 - 3\`
+\`\`\`
+0000 putobject 10
+0001 putobject 3
+0002 opt_minus
+0003 leave
+\`\`\`
     `,
-    instructions: 'opt_minus - subtraction (-)',
-    vmStub: vmStep3Stub,
-    compilerStub: '',
+    instructions: 'opt_minus · compile_binary_minus',
+    stub: step3Stub,
     testCases: [
       { description: '10 - 3 = 7', source: '10 - 3', expected: 7 },
       { description: '5 - 5 = 0', source: '5 - 5', expected: 0 },
       { description: '100 - 50 = 50', source: '100 - 50', expected: 50 },
     ],
+    bytecodePreview: `0000 putobject 10
+0001 putobject 3
+0002 opt_minus
+0003 leave`,
   },
 
   {
     id: 4,
-    phase: 'VM',
-    title: 'Step 4: Local Variables - Getlocal & Setlocal',
+    title: 'Step 4: Local Variables',
     description: `
 ## Step 4: Local Variable Storage
 
 ### EP-Relative Addressing
-Local variables are stored in the stack using **EP (Environment Pointer)**:
-- EP marks the base of the local variable area
-- First local is at: stack[ep - 0]
-- Second local is at: stack[ep - 1]
-- Nth local is at: stack[ep - N]
+Local variables are stored in the stack using the **EP (Environment Pointer)**:
+- \`env_read(0)\` → first local variable
+- \`env_read(1)\` → second local variable
+- \`env_read(N)\` → N-th local variable (internally: \`stack[ep - N]\`)
 
-### Getlocal
-- Read a local variable from stack[ep - index]
-- Push it onto the stack
+### VM: Getlocal / Setlocal
+- **Getlocal**: \`vm.push(vm.env_read(@index))\`
+- **Setlocal**: \`vm.env_write(@index, vm.pop)\`
 
-### Setlocal
-- Pop a value from the stack
-- Store it at stack[ep - index]
-- Push the value back (YARV convention)
+### Compiler: compile_local_var_read / compile_local_var_write
+- Look up the variable's index with \`iseq.local_table[node.name]\`
+- Emit \`Getlocal.new(index)\` or \`Setlocal.new(index)\`
 
-Example: \`x = 5; x\`
-- setlocal 0: store 5 at stack[ep - 0], push 5
-- getlocal 0: read stack[ep - 0], push 5
-
-Your Task: Implement both getlocal and setlocal \`call\` methods.
+### Example: \`x = 5; x\`
+\`\`\`
+locals: x
+0000 putobject 5
+0001 setlocal 0    # x = 5
+0002 getlocal 0    # read x
+0003 leave
+\`\`\`
     `,
-    instructions: 'getlocal / setlocal - local variables',
-    vmStub: vmStep4Stub,
-    compilerStub: '',
+    instructions: 'getlocal · setlocal · compile_local_var_read · compile_local_var_write',
+    stub: step4Stub,
     testCases: [
       { description: 'x = 5; x', source: 'x = 5; x', expected: 5 },
       { description: 'a = 10; b = 20; a + b', source: 'a = 10; b = 20; a + b', expected: 30 },
     ],
+    bytecodePreview: `locals: x
+0000 putobject 5
+0001 setlocal 0
+0002 getlocal 0
+0003 leave`,
   },
 
   {
     id: 5,
-    phase: 'VM',
-    title: 'Step 5: Comparisons - Less Than (OptLt)',
+    title: 'Step 5: Comparison',
     description: `
 ## Step 5: Comparison Operators
 
-### What is opt_lt?
-- **opt_lt** implements the < (less-than) operator
-- Pops b, pops a, pushes boolean result of a < b
+### VM: OptLt
+- **opt_lt** implements the \`<\` operator
+- Pops b, pops a, pushes boolean result of \`a < b\`
 
-### Boolean Values
-- Result is \`true\` or \`false\` (Ruby's boolean constants)
-- These are then used by branch instructions (\`branchunless\`, \`branchif\`)
+### Compiler: compile_binary_lt
+- Same pattern as plus/minus, but emit \`OptLt\`
 
-Your Task: Implement \`call\` to pop b, pop a, push a < b.
+### Example Bytecode: \`3 < 5\`
+\`\`\`
+0000 putobject 3
+0001 putobject 5
+0002 opt_lt
+0003 leave
+\`\`\`
+
+The result (\`true\` or \`false\`) will be consumed by branch instructions in Step 6.
     `,
-    instructions: 'opt_lt - less-than comparison',
-    vmStub: vmStep5Stub,
-    compilerStub: '',
+    instructions: 'opt_lt · compile_binary_lt',
+    stub: step5Stub,
     testCases: [
       { description: '3 < 5 = true', source: '3 < 5', expected: true },
       { description: '10 < 5 = false', source: '10 < 5', expected: false },
       { description: '5 < 5 = false', source: '5 < 5', expected: false },
     ],
+    bytecodePreview: `0000 putobject 3
+0001 putobject 5
+0002 opt_lt
+0003 leave`,
   },
 
   {
     id: 6,
-    phase: 'VM',
-    title: 'Step 6: Control Flow - Branchunless, Jump, Leave',
+    title: 'Step 6: Control Flow',
     description: `
 ## Step 6: Conditional Branching
 
-### Branchunless
-- Pops a condition value
-- If falsy (nil or false), sets vm.pc = dst - 1
-- Otherwise, continues to next instruction
-- **CRITICAL**: Set pc to dst - 1, NOT dst! The main loop increments pc after each instruction.
-
-### Jump
-- Unconditional jump: sets vm.pc = dst - 1
-- Used to skip else branches
-
-### Leave
-- Throws :leave to exit the execute loop
-- Signals end of method/program execution
-
-### Example Bytecode: "if 3 < 5; 10; else; 20; end"
+### Key Insight: PC increment order
+The VM increments PC **before** executing each instruction:
 \`\`\`
-0: Putobject(3)
-1: Putobject(5)
-2: OptLt                  # → true
-3: Branchunless 5         # condition is true, don't jump
-4: Putobject(10)          # (then branch) execute this
-5: Jump 6                  # skip else
-6: Putobject(20)          # (else branch, skipped)
-7: Leave                   # exit
+pc += 1
+insn.call(vm)
 \`\`\`
+So \`vm.set_pc(@dst)\` jumps to instruction \`@dst\` — **no off-by-one adjustment needed!**
 
-Your Task: Implement branchunless, jump, and leave.
+### VM: Branchunless
+- Pop condition; if **falsy** (nil or false), \`vm.set_pc(@dst)\`
+
+### VM: Jump
+- Unconditionally \`vm.set_pc(@dst)\`
+
+### VM: Leave
+- \`throw :leave\` to exit the execute loop
+
+### Compiler: compile_if_node
+- Use **forward-reference patching** with \`reserve_slot\` / \`set_slot\`
+- Reserve placeholders, compile branches, then backpatch with correct destinations
+
+### Example Bytecode: \`if 3 < 5; 10; else; 20; end\`
+\`\`\`
+0000 putobject 3
+0001 putobject 5
+0002 opt_lt
+0003 branchunless 5    # if false, jump to else (5)
+0004 putobject 10      # then branch
+0005 jump 6            # skip else
+0006 putobject 20      # else branch
+0007 leave
+\`\`\`
     `,
-    instructions: 'branchunless / jump / leave - control flow',
-    vmStub: vmStep6Stub,
-    compilerStub: '',
+    instructions: 'branchunless · jump · leave · compile_if_node',
+    stub: step6Stub,
     testCases: [
-      { description: 'if true; 10; else; 20; end', source: 'if 3 < 5; 10; else; 20; end', expected: 10 },
-      { description: 'if false; 10; else; 20; end', source: 'if 10 < 5; 10; else; 20; end', expected: 20 },
+      { description: 'if true branch', source: 'if 3 < 5; 10; else; 20; end', expected: 10 },
+      { description: 'if false branch', source: 'if 10 < 5; 10; else; 20; end', expected: 20 },
     ],
+    bytecodePreview: `0000 putobject 3
+0001 putobject 5
+0002 opt_lt
+0003 branchunless 5
+0004 putobject 10
+0005 jump 6
+0006 putobject 20
+0007 leave`,
   },
 
   {
     id: 7,
-    phase: 'VM',
-    title: 'Step 7: Methods - Define & Call',
+    title: 'Step 7: Methods & Recursion — FIBONACCI!',
     description: `
 ## Step 7: Method Definition and Calling
 
-### Definemethod
-- Stores a method in the receiver's class method table
-- Pushes the method name back onto the stack
+### VM: Definemethod
+- Store \`@method_iseq\` in the current object's class under \`@method_name\`
+- Push \`@method_name\` onto the stack (Ruby convention)
+- Use: \`vm.define_method(mid, iseq)\` and \`vm.push(value)\`
 
-### OptSendWithoutBlock
-- Pops argc arguments (in reverse order)
-- Pops the receiver object
-- Looks up the method in receiver.klass.method_table
-- Calls vm.invoke_method to execute the method with those args
-- Special case: :puts prints to $challenge_output
+### VM: OptSendWithoutBlock
+- \`vm.sendish(@cd)\` handles dispatch:
+  - Pops argc arguments and the receiver from the stack
+  - Looks up the method on the receiver's class
+  - Invokes it and returns the result
+- Push the result: \`vm.push(result)\`
 
-### Example: "def add(a, b); a + b; end; add(2, 3)"
+### Compiler: compile_def_node
+- \`compile_method(node)\` (system-provided) compiles the body into a new Iseq
+- Emit \`Definemethod.new(node.name, method_iseq)\`
+
+### Compiler: compile_general_call
+- If \`node.receiver\` is nil → emit \`Putself\` (e.g., recursive \`fib(n-1)\`)
+- Compile each argument
+- Build a \`CallData\` and emit \`OptSendWithoutBlock\`
+
+### FINAL TEST: fib(10) = 55 🎉
+\`\`\`ruby
+def fib(n)
+  if n < 2
+    n
+  else
+    fib(n - 1) + fib(n - 2)
+  end
+end
+fib(10)  # => 55
 \`\`\`
-0: Definemethod :add, [compiled method code]
-1: Putself                 # receiver for method call
-2: Putobject(2)            # arg 1
-3: Putobject(3)            # arg 2
-4: OptSendWithoutBlock :add, 2   # call add(2, 3)
-5: Leave
-\`\`\`
-
-Your Task: Implement definemethod and opt_send_without_block.
     `,
-    instructions: 'definemethod / opt_send_without_block - methods',
-    vmStub: vmStep7Stub,
-    compilerStub: '',
+    instructions: 'definemethod · opt_send_without_block · compile_def_node · compile_general_call',
+    stub: step7Stub,
     testCases: [
-      {
-        description: 'def add(a,b); a+b; end; add(2,3)',
-        source: 'def add(a, b); a + b; end; add(2, 3)',
-        expected: 5,
-      },
       {
         description: 'def identity(x); x; end; identity(42)',
         source: 'def identity(x); x; end; identity(42)',
         expected: 42,
       },
-    ],
-  },
-
-  // Compiler steps
-  {
-    id: 101,
-    phase: 'Compiler',
-    title: 'Step B1: Compile IntegerNode',
-    description: `
-## Compiler Phase B1: Integer Literals
-
-Now you implement the **compiler** side!
-
-### IntegerNode
-- Represents a literal integer in the source code (e.g., 42)
-- Prism AST: \`Prism::IntegerNode(value: 42)\`
-- Your job: emit \`Putobject(42)\` instruction
-
-### Pattern
-\`\`\`ruby
-when Prism::IntegerNode
-  iseq.emit(YRuby::Instructions::Putobject.new(node.value))
-\`\`\`
-
-Your Task: Add the IntegerNode case to compile_node method.
-    `,
-    instructions: 'Compile IntegerNode → Putobject',
-    vmStub: '',
-    compilerStub: compilerB1Stub,
-    testCases: [
-      { description: '42 compiles correctly', source: '42', expected: 42 },
-      { description: '0 compiles correctly', source: '0', expected: 0 },
-    ],
-  },
-
-  {
-    id: 102,
-    phase: 'Compiler',
-    title: 'Step B2: Compile LocalVariableNodes',
-    description: `
-## Compiler Phase B2: Local Variables
-
-### LocalVariableWriteNode
-- Represents assignment: \`x = value\`
-- Prism AST: has node.name and node.value
-- Task: compile the value, then emit Setlocal with the variable's index
-
-### LocalVariableReadNode
-- Represents reading a variable: \`x\`
-- Task: emit Getlocal with the variable's index
-
-### Pattern
-\`\`\`ruby
-when Prism::LocalVariableWriteNode
-  compile_node(node.value, iseq)
-  index = iseq.local_table[node.name]
-  iseq.emit(YRuby::Instructions::Setlocal.new(index))
-
-when Prism::LocalVariableReadNode
-  index = iseq.local_table[node.name]
-  iseq.emit(YRuby::Instructions::Getlocal.new(index))
-\`\`\`
-
-Your Task: Add both LocalVariable*Node cases to compile_node.
-    `,
-    instructions: 'Compile LocalVariable nodes → Getlocal/Setlocal',
-    vmStub: '',
-    compilerStub: compilerB2Stub,
-    testCases: [
-      { description: 'x = 5; x', source: 'x = 5; x', expected: 5 },
-      { description: 'a = 1; b = 2; a + b', source: 'a = 1; b = 2; a + b', expected: 3 },
-    ],
-  },
-
-  {
-    id: 103,
-    phase: 'Compiler',
-    title: 'Step B3: Compile Binary CallNodes',
-    description: `
-## Compiler Phase B3: Arithmetic & Comparison Operators
-
-### CallNode for Binary Operators
-- Represents: +, -, <, >, ==, !=, <=, >=
-- Prism AST: node.name is the operator symbol, node.receiver and node.arguments[0] are operands
-- Task: compile receiver, compile argument, emit the appropriate instruction
-
-### Pattern for Addition
-\`\`\`ruby
-when :+
-  compile_node(node.receiver, iseq)
-  compile_node(node.arguments.arguments[0], iseq)
-  iseq.emit(YRuby::Instructions::OptPlus.new)
-\`\`\`
-
-Your Task: Implement :+, :-, and :< cases (other cases are already provided).
-    `,
-    instructions: 'Compile CallNode binary ops → Opt* instructions',
-    vmStub: '',
-    compilerStub: compilerB3Stub,
-    testCases: [
-      { description: '1 + 2 = 3', source: '1 + 2', expected: 3 },
-      { description: '10 - 3 = 7', source: '10 - 3', expected: 7 },
-      { description: '3 < 5 = true', source: '3 < 5', expected: true },
-    ],
-  },
-
-  {
-    id: 104,
-    phase: 'Compiler',
-    title: 'Step B4: Compile IfNode with Forward-Reference Patching',
-    description: `
-## Compiler Phase B4: Conditional Statements
-
-### IfNode
-- Represents: \`if condition; then_branch; else; else_branch; end\`
-- Challenge: We don't know jump targets until after we've compiled the code!
-- Solution: Use reserve_slot and set_slot for forward-reference patching
-
-### Forward-Reference Patching
-\`\`\`ruby
-1. compile_node(predicate)              # compile condition
-2. branchunless_idx = iseq.size
-3. iseq.reserve_slot(branchunless_idx)  # placeholder for Branchunless
-4. compile_node(then_statements)        # compile then-branch
-5. jump_idx = iseq.size
-6. iseq.reserve_slot(jump_idx)          # placeholder for Jump
-7. else_idx = iseq.size                 # NOW we know else starts here!
-8. iseq.set_slot(branchunless_idx, Branchunless(else_idx))  # patch it
-9. compile_node(else_statements)        # compile else-branch
-10. iseq.set_slot(jump_idx, Jump(iseq.size))  # patch jump to skip else
-\`\`\`
-
-Your Task: Implement compile_if_node method.
-    `,
-    instructions: 'Compile IfNode with forward-reference patching',
-    vmStub: '',
-    compilerStub: compilerB4Stub,
-    testCases: [
-      { description: 'if true; 10; else; 20; end', source: 'if 3 < 5; 10; else; 20; end', expected: 10 },
-      { description: 'if false; 10; else; 20; end', source: 'if 10 < 5; 10; else; 20; end', expected: 20 },
-    ],
-  },
-
-  {
-    id: 105,
-    phase: 'Compiler',
-    title: 'Step B5: Compile DefNode & Recursive Calls - FIBONACCI!',
-    description: `
-## Compiler Phase B5: Methods & Recursion
-
-### DefNode
-- Represents: \`def method_name(params); ... end\`
-- Task: Use compile_method to create method Iseq, emit Definemethod
-
-### General CallNode (method calls)
-- Represents: \`receiver.method(args)\` or \`method(args)\`
-- If receiver is nil, emit Putself first
-- Compile all arguments
-- Emit OptSendWithoutBlock
-
-### Recursion
-- When \`fib(n-1)\` is called inside fib, it's a CallNode with receiver=nil
-- Compiles to: Putself, (compute n-1), OptSendWithoutBlock(:fib, 1)
-
-### Pattern
-\`\`\`ruby
-when Prism::DefNode
-  method_iseq = compile_method(node)
-  iseq.emit(YRuby::Instructions::Definemethod.new(node.name, method_iseq))
-
-# In general method calls:
-if node.receiver.nil?
-  iseq.emit(YRuby::Instructions::Putself.new)
-else
-  compile_node(node.receiver, iseq)
-end
-args = node.arguments&.arguments || []
-args.each { |arg| compile_node(arg, iseq) }
-iseq.emit(YRuby::Instructions::OptSendWithoutBlock.new(node.name, args.size))
-\`\`\`
-
-Your Task: Implement DefNode case and general method call path.
-
-**FINAL TEST: Your implementation should now run fib(10) = 55!**
-    `,
-    instructions: 'Compile DefNode & general CallNode - enable recursion!',
-    vmStub: '',
-    compilerStub: compilerB5Stub,
-    testCases: [
-      { description: 'def identity(x); x; end; identity(42)', source: 'def identity(x); x; end; identity(42)', expected: 42 },
-      { description: 'fib(5)', source: 'def fib(n); if n < 2; n; else; fib(n - 1) + fib(n - 2); end; end; fib(5)', expected: 5 },
-      { description: 'fib(10) = 55', source: 'def fib(n); if n < 2; n; else; fib(n - 1) + fib(n - 2); end; end; fib(10)', expected: 55 },
+      {
+        description: 'fib(5) = 5',
+        source: 'def fib(n); if n < 2; n; else; fib(n - 1) + fib(n - 2); end; end; fib(5)',
+        expected: 5,
+      },
+      {
+        description: 'fib(10) = 55',
+        source: 'def fib(n); if n < 2; n; else; fib(n - 1) + fib(n - 2); end; end; fib(10)',
+        expected: 55,
+      },
     ],
   },
 ]

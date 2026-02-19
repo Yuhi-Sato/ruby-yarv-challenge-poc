@@ -12,7 +12,7 @@ class YRuby
 
   class RClass
     attr_reader :name, :method_table, :superclass
-    def initialize(name, superclass: nil)
+    def initialize(name = "Object", superclass: nil)
       @name = name
       @method_table = {}
       @superclass = superclass
@@ -38,13 +38,13 @@ class YRuby
   class Iseq
     attr_reader :insns, :local_table, :type, :param_size
     def initialize(insns: [], local_table: {}, type: :top, param_size: 0)
-      @insns = insns
-      @local_table = local_table
+      @insns = insns.dup
+      @local_table = local_table.dup
       @type = type
       @param_size = param_size
     end
     def emit(instruction)
-      @insns.push(instruction)
+      @insns << instruction
     end
     def size
       @insns.size
@@ -65,15 +65,22 @@ class YRuby
       lines = ["== disasm =="]
       lines << "locals: #{@local_table.keys.join(', ')}" unless @local_table.empty?
       @insns.each_with_index do |insn, idx|
-        if insn.nil?
-          lines << format("%04d (reserved)", idx)
+        lines << if insn.nil?
+          format("%04d (nil)", idx)
         else
-          lines << format("%04d %s", idx, insn.to_s)
+          format("%04d %s", idx, insn.to_s)
         end
       end
       lines.join("\n")
     end
   end
+
+  # ============================================================
+  # Call metadata (matches yruby architecture)
+  # ============================================================
+
+  CallInfo = Struct.new(:mid, :argc, keyword_init: true)
+  CallData = Struct.new(:ci, keyword_init: true)
 
   # ============================================================
   # Instruction Base Class
@@ -91,83 +98,102 @@ class YRuby
     end
 
     # ============================================================
-    # System-Provided Instructions (not filled in by participants)
+    # System-Provided Instructions (infrastructure only)
+    # These are NOT teaching points — participants don't implement these
     # ============================================================
 
     class Pop < Base
       def call(vm)
-        vm.stack_pop
+        vm.pop
       end
     end
 
     class Putself < Base
       def call(vm)
-        vm.stack_push(vm.self_value)
+        vm.push(vm.self_value)
       end
     end
 
-    class Putstring < Base
-      attr_reader :str
-      def initialize(str)
-        @str = str
-      end
+    class Putnil < Base
       def call(vm)
-        vm.stack_push(@str)
+        vm.push(nil)
+      end
+    end
+
+    class Dup < Base
+      def call(vm)
+        vm.push(vm.topn(1))
+      end
+    end
+
+    # Leave is system-provided: every compiled program ends with Leave,
+    # so it must work from step 1. The teaching points in step 6 are
+    # Branchunless and Jump (the actual control-flow instructions).
+    class Leave < Base
+      def call(vm)
+        throw :leave
+      end
+    end
+
+    # ============================================================
+    # Participant-Implemented Instructions
+    # All raise NotImplementedError until the user provides an implementation.
+    # Users override these via class reopening in their stub files.
+    # ============================================================
+
+    class Putobject < Base
+      attr_reader :object
+      def initialize(object)
+        @object = object
       end
       def to_s
-        "#{super} #{@str.inspect}"
+        "#{super} #{@object.inspect}"
       end
     end
 
-    class OptEq < Base
-      def call(vm)
-        b = vm.stack_pop
-        a = vm.stack_pop
-        vm.stack_push(a == b)
+    class OptPlus < Base
+    end
+
+    class OptMinus < Base
+    end
+
+    class Getlocal < Base
+      attr_reader :index
+      def initialize(index)
+        @index = index
+      end
+      def to_s
+        "#{super} #{@index}"
       end
     end
 
-    class OptNeq < Base
-      def call(vm)
-        b = vm.stack_pop
-        a = vm.stack_pop
-        vm.stack_push(a != b)
+    class Setlocal < Base
+      attr_reader :index
+      def initialize(index)
+        @index = index
+      end
+      def to_s
+        "#{super} #{@index}"
       end
     end
 
-    class OptGt < Base
-      def call(vm)
-        b = vm.stack_pop
-        a = vm.stack_pop
-        vm.stack_push(a > b)
-      end
+    class OptLt < Base
     end
 
-    class OptLe < Base
-      def call(vm)
-        b = vm.stack_pop
-        a = vm.stack_pop
-        vm.stack_push(a <= b)
-      end
-    end
-
-    class OptGe < Base
-      def call(vm)
-        b = vm.stack_pop
-        a = vm.stack_pop
-        vm.stack_push(a >= b)
-      end
-    end
-
-    class Branchif < Base
+    class Branchunless < Base
       attr_reader :dst
       def initialize(dst)
         @dst = dst
       end
-      def call(vm)
-        if vm.stack_pop
-          vm.pc = @dst - 1
-        end
+      def to_s
+        "#{super} #{@dst}"
+      end
+    end
+
+    class Jump < Base
+      attr_reader :dst
+      def initialize(dst)
+        @dst = dst
       end
       def to_s
         "#{super} #{@dst}"
@@ -180,278 +206,184 @@ class YRuby
         @method_name = method_name
         @method_iseq = method_iseq
       end
-      def call(vm)
-        vm.self_value.klass.define_method(@method_name, @method_iseq)
-        vm.stack_push(@method_name)
-      end
       def to_s
         "#{super} :#{@method_name}"
       end
     end
 
     class OptSendWithoutBlock < Base
-      attr_reader :method_name, :argc
-      def initialize(method_name, argc)
-        @method_name = method_name
-        @argc = argc
-      end
-      def call(vm)
-        args = []
-        @argc.times { args.unshift(vm.stack_pop) }
-        receiver = vm.stack_pop
-
-        result = if @method_name == :puts
-          args.each { |a| $challenge_output = ($challenge_output || '') + a.to_s + "\n" }
-          nil
-        else
-          method_iseq = receiver.klass.lookup_method(@method_name)
-          raise "Unknown method: #{@method_name}" unless method_iseq
-          vm.invoke_method(method_iseq: method_iseq, args: args, receiver: receiver)
-        end
-        vm.stack_push(result)
+      attr_reader :cd
+      def initialize(cd)
+        @cd = cd
       end
       def to_s
-        "#{super} :#{@method_name}, #{@argc}"
-      end
-    end
-
-    # ============================================================
-    # Instructions filled in by Participants in Phase A
-    # ============================================================
-
-    class Putobject < Base
-      attr_reader :object
-      def initialize(object)
-        @object = object
-      end
-      def call(vm)
-        vm.stack_push(@object)
-      end
-      def to_s
-        "#{super} #{@object.inspect}"
-      end
-    end
-
-    class OptPlus < Base
-      def call(vm)
-        b = vm.stack_pop
-        a = vm.stack_pop
-        vm.stack_push(a + b)
-      end
-    end
-
-    class OptMinus < Base
-      def call(vm)
-        b = vm.stack_pop
-        a = vm.stack_pop
-        vm.stack_push(a - b)
-      end
-    end
-
-    class Getlocal < Base
-      attr_reader :index
-      def initialize(index)
-        @index = index
-      end
-      def call(vm)
-        vm.stack_push(vm.stack[vm.ep - @index])
-      end
-      def to_s
-        "#{super} #{@index}"
-      end
-    end
-
-    class Setlocal < Base
-      attr_reader :index
-      def initialize(index)
-        @index = index
-      end
-      def call(vm)
-        vm.stack[vm.ep - @index] = vm.stack_pop
-      end
-      def to_s
-        "#{super} #{@index}"
-      end
-    end
-
-    class OptLt < Base
-      def call(vm)
-        b = vm.stack_pop
-        a = vm.stack_pop
-        vm.stack_push(a < b)
-      end
-    end
-
-    class Branchunless < Base
-      attr_reader :dst
-      def initialize(dst)
-        @dst = dst
-      end
-      def call(vm)
-        cond = vm.stack_pop
-        vm.pc = @dst - 1 if !cond
-      end
-      def to_s
-        "#{super} #{@dst}"
-      end
-    end
-
-    class Jump < Base
-      attr_reader :dst
-      def initialize(dst)
-        @dst = dst
-      end
-      def call(vm)
-        vm.pc = @dst - 1
-      end
-      def to_s
-        "#{super} #{@dst}"
-      end
-    end
-
-    class Leave < Base
-      def call(vm)
-        # Leave instruction exits the current frame and returns to the caller
-        # We use throw :leave to break out of the execution loop
-        throw :leave
+        "#{super} :#{@cd.ci.mid}, #{@cd.ci.argc}"
       end
     end
   end
 end
 
 # ============================================================
-# MinRuby - The actual VM
+# MinRuby — VM core (yruby-aligned architecture)
+#
+# Key design choices (aligned with yruby):
+#   - PC is incremented BEFORE instruction execution
+#     => branch instructions use vm.set_pc(@dst) directly, no -1 offset
+#   - User-facing stack API: push/pop/topn
+#   - User-facing locals API: env_read(index) / env_write(index, value)
+#     where index 0 = first local, index 1 = second local, etc.
+#   - Method calls use nested execute() via invoke_method
+#   - sendish(cd) handles method dispatch (pops recv+args, calls invoke_method)
 # ============================================================
 
 class MinRuby
-  STACK_SIZE = 256
+  STACK_SIZE = 128
   ControlFrame = Struct.new(:iseq, :pc, :sp, :ep, :type, :self_value, keyword_init: true)
 
-  attr_accessor :stack, :cfp
-  attr_reader :parser, :compiler, :main
+  attr_reader :stack, :frames, :main
 
   def initialize(parser, compiler)
     @parser = parser
     @compiler = compiler
     @stack = Array.new(STACK_SIZE)
-    @cfp = STACK_SIZE
+    @frames = []
     @main = YRuby::RBasic.new(YRuby::RClass.new("Object"))
   end
 
-  def parse(source)
-    @parser.parse(source)
-  end
-
-  def compile(ast)
-    @compiler.compile(ast)
-  end
-
   def run(source)
-    ast = parse(source)
-    iseq = compile(ast)
+    ast = @parser.parse(source)
+    iseq = @compiler.compile(ast)
     push_frame(iseq: iseq, type: :top, sp: 0, self_value: @main)
     execute
-    result = stack_pop
+    result = pop
     pop_frame
     result
   end
 
-  def invoke_method(method_iseq:, args:, receiver: main)
-    push_frame(iseq: method_iseq, type: :method, args: args, self_value: receiver)
-    execute
-    result = stack_pop
-    pop_frame
-    result
+  # ============================================================
+  # User-facing stack API
+  # ============================================================
+
+  # Push a value onto the stack
+  def push(x)
+    @stack[cfp.sp] = x
+    cfp.sp += 1
   end
 
-  def invoke_block(block_iseq:, args:)
-    push_frame(iseq: block_iseq, type: :block, args: args, self_value: current_cf.self_value)
-    execute
-    result = stack_pop
-    pop_frame
-    result
+  # Pop a value from the stack
+  def pop
+    cfp.sp -= 1
+    @stack[cfp.sp]
   end
 
-  def stack_push(value)
-    @stack[@cfp + 1 + sp] = value
-    self.sp += 1
+  # Peek at the nth value from the top (1-indexed, topn(1) = top)
+  def topn(n)
+    @stack[cfp.sp - n]
   end
 
-  def stack_pop
-    self.sp -= 1
-    @stack[@cfp + 1 + sp]
+  # ============================================================
+  # User-facing locals API (EP-relative addressing)
+  # env_read(0)  reads the first local variable
+  # env_read(1)  reads the second local variable
+  # Internally: stack[ep - index]
+  # ============================================================
+
+  def env_read(index)
+    @stack[cfp.ep - index]
   end
 
-  def current_cf
-    @stack[@cfp]
+  def env_write(index, value)
+    @stack[cfp.ep - index] = value
   end
 
-  # Delegate methods to current_cf instead of using Forwardable (not available in ruby.wasm)
-  def pc
-    current_cf.pc
+  # ============================================================
+  # User-facing control API
+  # ============================================================
+
+  # Set the program counter (for branch instructions)
+  # Because PC is incremented BEFORE execution, set_pc(@dst) jumps to @dst
+  def set_pc(x)
+    cfp.pc = x
   end
 
-  def pc=(value)
-    current_cf.pc = value
-  end
-
-  def sp
-    current_cf.sp
-  end
-
-  def sp=(value)
-    current_cf.sp = value
-  end
-
-  def ep
-    current_cf.ep
-  end
-
-  def ep=(value)
-    current_cf.ep = value
-  end
-
-  def iseq
-    current_cf.iseq
-  end
-
+  # The current self object
   def self_value
-    current_cf.self_value
+    cfp.self_value
+  end
+
+  # Define a method on the current self's class
+  def define_method(mid, iseq)
+    cfp.self_value.klass.define_method(mid, iseq)
+  end
+
+  # Dispatch a method call using CallData
+  # Pops argc arguments and the receiver from the stack.
+  # Special case: :puts writes to $challenge_output.
+  # Returns the method's return value (caller must push it).
+  def sendish(cd)
+    ci = cd.ci
+    argc = ci.argc
+    # Collect args in order (topn(argc) is first arg, topn(1) is last)
+    args = argc.times.map { |i| topn(argc - i) }
+    recv = topn(argc + 1)
+    (argc + 1).times { pop }
+
+    if ci.mid == :puts
+      args.each { |a| $challenge_output = ($challenge_output || '') + a.to_s + "\n" }
+      return nil
+    end
+
+    method_iseq = recv.klass.lookup_method(ci.mid)
+    raise "undefined method '#{ci.mid}'" unless method_iseq
+    invoke_method(recv, method_iseq, args)
   end
 
   private
 
-  def push_frame(iseq:, type:, sp: nil, args: [], self_value: nil)
-    frame_sp = sp || self.sp
-    frame_ep = frame_sp + iseq.local_size - 1
-    new_sp = frame_sp + iseq.local_size
+  def cfp
+    @frames.last
+  end
 
-    args.each_with_index do |arg, idx|
-      @stack[frame_ep - idx] = arg
-    end
-
+  # Push a new control frame
+  # Locals are laid out from ep downward:
+  #   ep - 0 = local[0] (first local / first param)
+  #   ep - 1 = local[1]
+  #   ep - N = local[N]
+  def push_frame(iseq:, type:, sp:, self_value:, args: [])
+    local_size = iseq.local_size
+    ep = sp + local_size - 1
+    new_sp = sp + local_size
     cf = ControlFrame.new(
-      iseq: iseq,
-      pc: 0,
-      sp: new_sp,
-      ep: frame_ep,
-      type: type,
-      self_value: self_value
+      iseq: iseq, pc: 0, sp: new_sp, ep: ep,
+      type: type, self_value: self_value
     )
-    @cfp -= 1
-    @stack[@cfp] = cf
+    @frames << cf
+    args.each_with_index { |a, i| env_write(i, a) }
   end
 
   def pop_frame
-    @cfp += 1
+    @frames.pop
   end
 
+  # Execute a method: push a frame, run, capture return value, pop frame
+  def invoke_method(recv, method_iseq, args)
+    caller_sp = cfp.sp
+    push_frame(iseq: method_iseq, type: :method, sp: caller_sp, self_value: recv, args: args)
+    execute
+    retval = pop
+    pop_frame
+    retval
+  end
+
+  # Main execution loop (yruby-aligned):
+  # PC is incremented BEFORE calling the instruction.
+  # This means branch instructions set_pc(@dst) without any -1 adjustment.
   def execute
     catch(:leave) do
       loop do
-        insn = iseq[pc]
+        insn = cfp.iseq[cfp.pc]
+        cfp.pc += 1
         insn.call(self)
-        self.pc += 1
       end
     end
   end

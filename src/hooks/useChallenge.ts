@@ -14,8 +14,7 @@ interface UseChallengeOptions {
 export function useChallenge({ vmRef }: UseChallengeOptions) {
   const [state, setState] = useState<ChallengeState>({
     currentStep: 1,
-    vmCode: STEPS[0].vmStub,
-    compilerCode: STEPS[0].compilerStub,
+    userCode: { 1: STEPS[0].stub },
     lastResult: null,
     isRunning: false,
   })
@@ -26,22 +25,21 @@ export function useChallenge({ vmRef }: UseChallengeOptions) {
       setState(s => ({
         ...s,
         currentStep: stepId,
-        vmCode: step.vmStub,
-        compilerCode: step.compilerStub,
+        // Initialize with stub only if user hasn't already edited this step
+        userCode: s.userCode[stepId] !== undefined
+          ? s.userCode
+          : { ...s.userCode, [stepId]: step.stub },
         lastResult: null,
       }))
     }
   }, [])
 
   const updateCode = useCallback((code: string) => {
-    const currentStep = STEPS.find(s => s.id === state.currentStep)
-    if (currentStep) {
-      setState(s => ({
-        ...s,
-        [currentStep.phase === 'VM' ? 'vmCode' : 'compilerCode']: code,
-      }))
-    }
-  }, [state.currentStep])
+    setState(s => ({
+      ...s,
+      userCode: { ...s.userCode, [s.currentStep]: code },
+    }))
+  }, [])
 
   const runTests = useCallback(async () => {
     if (!vmRef.current || state.isRunning) {
@@ -52,15 +50,19 @@ export function useChallenge({ vmRef }: UseChallengeOptions) {
 
     try {
       const currentStep = STEPS.find(s => s.id === state.currentStep)
-      if (!currentStep) {
-        throw new Error('Step not found')
-      }
+      if (!currentStep) throw new Error('Step not found')
+      if (!vmRef.current) throw new Error('VM not initialized')
 
-      if (!vmRef.current) {
-        throw new Error('VM not initialized')
-      }
+      // Accumulate user code from step 1 to currentStep (in order)
+      const stepsUpToCurrent = STEPS
+        .filter(s => s.id <= state.currentStep)
+        .sort((a, b) => a.id - b.id)
 
-      // Build test code
+      const accumulatedUserCode = stepsUpToCurrent
+        .map(s => state.userCode[s.id] ?? s.stub)
+        .join('\n\n')
+
+      // Build test invocations
       const testInvocations = currentStep.testCases
         .map(tc => {
           const expectedStr = rubyLiteral(tc.expected)
@@ -68,13 +70,12 @@ export function useChallenge({ vmRef }: UseChallengeOptions) {
         })
         .join('\n')
 
-      // Merge all code: system + participant + tests
+      // Merge: system infrastructure + all user implementations + tests
       const fullCode = [
         vmSystemRb,
         compilerSystemRb,
         testRunnerRb,
-        state.vmCode,
-        state.compilerCode,
+        accumulatedUserCode,
         `
 $challenge_output = ""
 $test_output = []
@@ -105,11 +106,8 @@ $test_output.join("\\n")
         `,
       ].join('\n\n')
 
-      // Execute in ruby.wasm
       const result = vmRef.current.eval(fullCode)
       const output = result.toString()
-
-      // Parse output
       const parsedResult = parseRunResult(output)
       setState(s => ({ ...s, lastResult: parsedResult, isRunning: false }))
     } catch (e) {
@@ -124,7 +122,7 @@ $test_output.join("\\n")
       }
       setState(s => ({ ...s, lastResult: errorResult, isRunning: false }))
     }
-  }, [vmRef, state.vmCode, state.compilerCode, state.currentStep, state.isRunning])
+  }, [vmRef, state.userCode, state.currentStep, state.isRunning])
 
   return {
     state,
@@ -134,9 +132,6 @@ $test_output.join("\\n")
   }
 }
 
-/**
- * Convert a value to Ruby literal
- */
 function rubyLiteral(value: any): string {
   if (value === null) return 'nil'
   if (value === true) return 'true'
@@ -145,13 +140,9 @@ function rubyLiteral(value: any): string {
   return String(value)
 }
 
-/**
- * Parse the test report output from ruby.wasm
- */
 function parseRunResult(output: string): RunResult {
   const lines = output.split('\n')
 
-  // Find report section
   let reportStart = -1
   let reportEnd = -1
   for (let i = 0; i < lines.length; i++) {
@@ -164,7 +155,6 @@ function parseRunResult(output: string): RunResult {
     report = lines.slice(reportStart + 1, reportEnd).join('\n')
   }
 
-  // Find bytecode section
   let bytecodeDisasm = ''
   let disasmStart = -1
   let disasmEnd = -1
@@ -177,16 +167,13 @@ function parseRunResult(output: string): RunResult {
     bytecodeDisasm = lines.slice(disasmStart + 1, disasmEnd).join('\n')
   }
 
-  // Parse test results
   const testResults: TestResult[] = []
-  const reportLines = report.split('\n')
   let allPassed = true
 
-  for (const line of reportLines) {
+  for (const line of report.split('\n')) {
     if (line.startsWith('[PASS]')) {
-      const description = line.substring(6).trim()
       testResults.push({
-        description,
+        description: line.substring(6).trim(),
         passed: true,
         expected: '',
         got: '',

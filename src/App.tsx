@@ -62,7 +62,7 @@ function App() {
           left={<TutorialPane step={currentStep} result={state.lastResult} />}
           center={
             <EditorPane
-              step={currentStep}
+              code={state.userCode[state.currentStep] ?? currentStep.stub}
               onChange={updateCode}
               isRunning={state.isRunning}
             />

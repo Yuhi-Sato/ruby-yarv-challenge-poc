@@ -27,25 +27,18 @@ fib(10)  # => 55
 - **Hosting:** Static (Vercel / GitHub Pages / Cloudflare)
 - **No backend server required** - everything runs in the user's browser
 
-### Design Pattern: Two Phases
+### Design Pattern: 7 Combined Steps (VM + Compiler together)
 
-#### Phase A: VM Instructions (Steps 1-7)
-Participants implement individual YARV instruction handlers one at a time:
-- Step 1: `putobject` (push literal onto stack)
-- Step 2: `opt_plus` (addition)
-- Step 3: `opt_minus` (subtraction)
-- Step 4: `getlocal` / `setlocal` (local variables)
-- Step 5: `opt_lt` (less-than comparison)
-- Step 6: `branchunless` / `jump` / `leave` (control flow)
-- Step 7: `definemethod` / `opt_send_without_block` (method definition & calls)
+Each step teaches one concept end-to-end: both the VM instruction AND the corresponding compiler case.
+Steps accumulate: when running step N, user code from steps 1..N is all merged together.
 
-#### Phase B: Compiler (Steps B1-B5)
-Participants implement `compile_node` case statements to convert AST to bytecode:
-- B1: `Prism::IntegerNode`
-- B2: `Prism::LocalVariableWriteNode` / `Prism::LocalVariableReadNode`
-- B3: `Prism::CallNode` (arithmetic: :+, :-, :<)
-- B4: `Prism::IfNode` (if/else with forward-reference patching)
-- B5: `Prism::DefNode` + general method calls (recursion)
+- Step 1: `putobject` (VM) + `compile_integer_node` (Compiler)
+- Step 2: `opt_plus` (VM) + `compile_binary_plus` (Compiler)
+- Step 3: `opt_minus` (VM) + `compile_binary_minus` (Compiler)
+- Step 4: `getlocal` / `setlocal` (VM) + `compile_local_var_read` / `compile_local_var_write` (Compiler)
+- Step 5: `opt_lt` (VM) + `compile_binary_lt` (Compiler)
+- Step 6: `branchunless` / `jump` / `leave` (VM) + `compile_if_node` (Compiler)
+- Step 7: `definemethod` / `opt_send_without_block` (VM) + `compile_def_node` / `compile_general_call` (Compiler)
 
 ### Core UX Flow
 
@@ -112,65 +105,76 @@ ruby-yarv-challenge/
 
 ## Key Implementation Details
 
-### 1. Stack Model: SP/EP Pointer Style
-
-The VM uses a stack with two pointers (same as YRuby):
-- **SP (Stack Pointer):** points to the next available slot
-- **EP (Environment Pointer):** points to the base of the current frame's local variables
+### 1. VM User-Facing API (yruby-aligned)
 
 ```ruby
-vm.stack_push(value)  # stack[sp] = value; sp += 1
-vm.stack_pop          # sp -= 1; return stack[sp]
-getlocal(index)       # read from stack[ep - index]
-setlocal(index)       # write to stack[ep - index]
+vm.push(value)         # push onto stack
+vm.pop                 # pop from stack
+vm.topn(n)             # peek without popping (1-indexed)
+vm.env_read(index)     # read local variable (internally: stack[ep - index])
+vm.env_write(index, v) # write local variable
+vm.set_pc(dst)         # set program counter (for branch instructions)
+vm.self_value          # the current self object
+vm.define_method(mid, iseq)  # register a method on self's class
+vm.sendish(cd)         # dispatch a method call (pops recv+args, returns result)
 ```
 
-### 2. Branch Instruction Offset (Critical!)
+### 2. Branch Instruction Offset (IMPORTANT — yruby-aligned)
 
-When branching, set `vm.pc = dst - 1` (not `dst`), because the main loop does `pc += 1` after each instruction:
+PC is incremented **BEFORE** instruction execution:
 
 ```ruby
 # In the execute loop:
 loop do
-  iseq[pc].call(self)
-  self.pc += 1         # ← always incremented
+  insn = iseq[pc]
+  pc += 1              # ← incremented FIRST
+  insn.call(self)      # ← then executed
 end
 
-# So Jump must compensate:
+# So Jump uses vm.set_pc(@dst) directly — NO -1 needed:
 class Jump < Base
   def call(vm)
-    vm.pc = @dst - 1   # ← NOT @dst
+    vm.set_pc(@dst)    # ← just @dst, not @dst - 1
   end
 end
 ```
 
-### 3. Code Merging Strategy
+### 3. Code Merging Strategy (Accumulation Model)
 
-Each time "Run Tests" is clicked, ruby.wasm receives concatenated code in this order:
+Each time "Run Tests" is clicked for step N, ruby.wasm receives:
 
 ```
-1. vm_system.rb           # YRuby, MinRuby, all system instructions defined
-2. compiler_system.rb     # Parser, Compiler class
-3. participant vm code    # Reopens instruction classes (overrides system)
-4. participant compiler   # Reopens compile_node method (Phase B only)
-5. test_runner.rb         # ChallengeTestRunner class
-6. test invocations       # runner.test(...) calls
+1. vm_system.rb           # VM infrastructure only (no instruction logic)
+2. compiler_system.rb     # Compiler scaffold (all methods raise NotImplementedError)
+3. test_runner.rb         # ChallengeTestRunner class
+4. userCode[1]            # user's step 1 implementation
+5. userCode[2]            # user's step 2 implementation (if N >= 2)
+...
+N. userCode[N]            # user's current step implementation
+N+1. test invocations     # runner.test(...) calls
 ```
 
-### 4. Class Reopening in Ruby
+Steps depend on each other: failing step 1 will break step 2's tests too.
 
-Participant code uses Ruby's class reopening pattern to override specific methods:
+### 4. Compiler: Method-per-node Pattern
+
+Instead of one `compile_node` case statement, the compiler uses focused methods:
 
 ```ruby
-# System defines: class YRuby::Instructions::Putobject < Base; end
-
-# Participant reopens and implements:
-class YRuby::Instructions::Putobject < YRuby::Instructions::Base
-  def call(vm)
-    vm.stack_push(@object)  # ← implementation
-  end
+class YRuby::Compiler
+  def compile_integer_node(node, iseq)    # Step 1 — user implements
+  def compile_binary_plus(node, iseq)     # Step 2 — user implements
+  def compile_binary_minus(node, iseq)    # Step 3 — user implements
+  def compile_local_var_read(node, iseq)  # Step 4 — user implements
+  def compile_local_var_write(node, iseq) # Step 4 — user implements
+  def compile_binary_lt(node, iseq)       # Step 5 — user implements
+  def compile_if_node(node, iseq)         # Step 6 — user implements
+  def compile_def_node(node, iseq)        # Step 7 — user implements
+  def compile_general_call(node, iseq)    # Step 7 — user implements
 end
 ```
+
+The main `compile_node` dispatch is system-provided and delegates to these methods.
 
 ---
 

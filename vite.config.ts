@@ -11,6 +11,6 @@ export default defineConfig({
     topLevelAwait(),
   ],
   optimizeDeps: {
-    exclude: ['@ruby/3.4-wasm-wasi', '@ruby/wasm-wasi'],
+    exclude: ['@ruby/4.0-wasm-wasi', '@ruby/wasm-wasi'],
   },
 })

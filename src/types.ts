@@ -1,8 +1,6 @@
 // TypeScript type definitions for Ruby YARV Challenge
 
 export type VMStatus = 'loading' | 'ready' | 'error'
-export type Phase = 'A' | 'B'
-export type StepPhase = 'VM' | 'Compiler'
 
 export interface TestCase {
   description: string
@@ -12,12 +10,10 @@ export interface TestCase {
 
 export interface StepConfig {
   id: number
-  phase: StepPhase
   title: string
   description: string // Markdown
   instructions: string // Instructions introduced in this step
-  vmStub: string // Participant-editable VM code
-  compilerStub: string // Participant-editable compiler code
+  stub: string // Combined VM + compiler stub (participant-editable)
   testCases: TestCase[]
   bytecodePreview?: string // Expected bytecode for tutorial pane
 }
@@ -40,8 +36,7 @@ export interface RunResult {
 
 export interface ChallengeState {
   currentStep: number
-  vmCode: string
-  compilerCode: string
+  userCode: Record<number, string> // step id → user's code for that step
   lastResult: RunResult | null
   isRunning: boolean
 }
