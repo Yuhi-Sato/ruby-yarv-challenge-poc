@@ -13,18 +13,16 @@
 # The stack for `1 + 2` looks like:
 #   stack: [1, 2]   sp points past 2
 #
-# Pop order is LIFO: pop gets 2 first (b), then 1 (a).
-# Result: push a + b = 3
+# Stack is LIFO: the first pop gives the right operand (b),
+# the second pop gives the left operand (a).
+# Push a + b.
 #
 # Stack before: [1, 2]
 # Stack after:  [3]
 #
 class YRuby::Instructions::OptPlus < YRuby::Instructions::Base
   def call(vm)
-    # TODO: Pop b, pop a, push a + b
-    # b = vm.pop
-    # a = vm.pop
-    # vm.push(...)
+    # TODO: Pop the right operand (b), then the left (a), push a + b
     raise NotImplementedError, "OptPlus#call not implemented"
   end
 end
@@ -35,14 +33,12 @@ end
 #   node.receiver        — the left operand (e.g., 1)
 #   node.arguments.arguments[0] — the right operand (e.g., 2)
 #
-# Compile both operands onto the stack, then emit OptPlus.
+# Compile the left operand, compile the right operand,
+# then emit OptPlus.
 #
 class YRuby::Compiler
   def compile_binary_plus(node, iseq)
-    # TODO:
-    # compile_node(node.receiver, iseq)
-    # compile_node(node.arguments.arguments[0], iseq)
-    # iseq.emit(YRuby::Instructions::OptPlus.new)
+    # TODO: Compile left, compile right, emit OptPlus
     raise NotImplementedError, "compile_binary_plus not implemented"
   end
 end

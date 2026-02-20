@@ -34,8 +34,7 @@
 #
 class YRuby::Instructions::Getlocal < YRuby::Instructions::Base
   def call(vm)
-    # TODO: Push the local variable at @index onto the stack
-    # vm.push(vm.env_read(@index))
+    # TODO: Read env_read(@index) and push it onto the stack
     raise NotImplementedError, "Getlocal#call not implemented"
   end
 end
@@ -49,8 +48,7 @@ end
 #
 class YRuby::Instructions::Setlocal < YRuby::Instructions::Base
   def call(vm)
-    # TODO: Pop a value and store it in local variable @index
-    # vm.env_write(@index, vm.pop)
+    # TODO: Pop the top value and store it with env_write(@index, ...)
     raise NotImplementedError, "Setlocal#call not implemented"
   end
 end
@@ -64,9 +62,7 @@ end
 #
 class YRuby::Compiler
   def compile_local_var_read(node, iseq)
-    # TODO:
-    # index = iseq.local_table[node.name]
-    # iseq.emit(YRuby::Instructions::Getlocal.new(index))
+    # TODO: Look up node.name in iseq.local_table, emit Getlocal with that index
     raise NotImplementedError, "compile_local_var_read not implemented"
   end
 
@@ -75,13 +71,10 @@ class YRuby::Compiler
   # A Prism::LocalVariableWriteNode assigns a value to a named local.
   # node.name is the variable name, node.value is the right-hand expression.
   #
-  # Compile the value, then emit Setlocal with the variable's index.
+  # Compile the value expression first, then emit Setlocal.
   #
   def compile_local_var_write(node, iseq)
-    # TODO:
-    # compile_node(node.value, iseq)
-    # index = iseq.local_table[node.name]
-    # iseq.emit(YRuby::Instructions::Setlocal.new(index))
+    # TODO: Compile node.value, look up node.name in local_table, emit Setlocal
     raise NotImplementedError, "compile_local_var_write not implemented"
   end
 end

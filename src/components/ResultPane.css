@@ -20,7 +20,7 @@
   justify-content: space-between;
   align-items: center;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #ddd;
+  border-bottom: 2px solid #f0e0e0;
 }
 
 .status-badge {
@@ -36,8 +36,8 @@
 }
 
 .status-badge.failed {
-  background: #ffebee;
-  color: #c62828;
+  background: #fff0f0;
+  color: #8B0000;
 }
 
 .section {
@@ -45,39 +45,40 @@
 }
 
 .section h3 {
-  margin: 0 0 0.75rem 0;
-  font-size: 0.95rem;
-  color: #555;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  color: #a06060;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.toggle-btn {
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.2s;
-  width: 100%;
-  text-align: left;
-}
-
-.toggle-btn:hover {
-  background: #e0e0e0;
-}
+/* ---- Bytecode display ---- */
 
 .bytecode-display {
-  margin: 0.5rem 0 0 0;
+  margin: 0;
   padding: 0.75rem;
-  background: #f5f5f5;
-  border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 0.8rem;
   overflow-x: auto;
   max-height: 150px;
   overflow-y: auto;
   font-family: 'Courier New', monospace;
+  border: 1px solid;
 }
+
+.bytecode-display.expected {
+  background: #fafafa;
+  border-color: #e0c0c0;
+  color: #7a5050;
+}
+
+.bytecode-display.actual {
+  background: #f1f8e9;
+  border-color: #c8e6c9;
+  color: #2e7d32;
+}
+
+/* ---- Test results ---- */
 
 .test-results {
   display: flex;
@@ -100,8 +101,8 @@
 }
 
 .test-item.failed {
-  background: #ffe0b2;
-  border-left-color: #ff9800;
+  background: #fff0f0;
+  border-left-color: #c62828;
 }
 
 .test-status {
@@ -114,7 +115,7 @@
 }
 
 .test-item.failed .test-status {
-  color: #ff9800;
+  color: #c62828;
 }
 
 .test-details {
@@ -144,28 +145,77 @@
   font-family: 'Courier New', monospace;
 }
 
+/* ---- Error section ---- */
+
 .error-section {
-  background: #ffebee;
+  background: #fff0f0;
   padding: 1rem;
   border-radius: 4px;
-  border-left: 3px solid #f44336;
+  border-left: 3px solid #8B0000;
 }
 
 .error-section h3 {
   margin: 0 0 0.5rem 0;
-  color: #c62828;
+  color: #8B0000;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .error-message {
   margin: 0;
   padding: 0.75rem;
   background: white;
-  border: 1px solid #ffcdd2;
+  border: 1px solid #f0c8c8;
   border-radius: 3px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   overflow-x: auto;
-  max-height: 120px;
+  max-height: 140px;
   overflow-y: auto;
-  color: #c62828;
+  color: #8B0000;
   font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---- Next step button ---- */
+
+.next-step-btn {
+  width: 100%;
+  padding: 0.85rem;
+  background: #8B0000;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.next-step-btn:hover {
+  background: #6b0000;
+}
+
+/* ---- Step 7 celebration ---- */
+
+.celebration {
+  padding: 1rem;
+  background: linear-gradient(135deg, #fff9c4, #ffe0e0);
+  border: 2px solid #8B0000;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.celebration p {
+  margin: 0.25rem 0;
+  color: #5a0000;
+}
+
+.celebration code {
+  background: rgba(139, 0, 0, 0.07);
+  padding: 0.2em 0.5em;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  color: #8B0000;
 }

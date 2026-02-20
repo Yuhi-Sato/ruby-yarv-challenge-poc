@@ -15,6 +15,7 @@ export function useChallenge({ vmRef }: UseChallengeOptions) {
   const [state, setState] = useState<ChallengeState>({
     currentStep: 1,
     userCode: { 1: STEPS[0].stub },
+    completedSteps: [],
     lastResult: null,
     isRunning: false,
   })
@@ -109,7 +110,14 @@ $test_output.join("\\n")
       const result = vmRef.current.eval(fullCode)
       const output = result.toString()
       const parsedResult = parseRunResult(output)
-      setState(s => ({ ...s, lastResult: parsedResult, isRunning: false }))
+      setState(s => ({
+        ...s,
+        lastResult: parsedResult,
+        isRunning: false,
+        completedSteps: parsedResult.allPassed && !s.completedSteps.includes(s.currentStep)
+          ? [...s.completedSteps, s.currentStep]
+          : s.completedSteps,
+      }))
     } catch (e) {
       console.error('Test execution error:', e)
       const errorMsg = e instanceof Error ? e.message : String(e)

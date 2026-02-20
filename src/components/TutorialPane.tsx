@@ -7,28 +7,39 @@ interface TutorialPaneProps {
   result: RunResult | null
 }
 
+const VM_API = [
+  { sig: 'vm.push(x)', desc: 'Push value onto stack' },
+  { sig: 'vm.pop', desc: 'Pop and return top value' },
+  { sig: 'vm.topn(n)', desc: 'Peek nth from top (1 = top)' },
+  { sig: 'vm.env_read(index)', desc: 'Read local variable at index' },
+  { sig: 'vm.env_write(index, v)', desc: 'Write local variable at index' },
+  { sig: 'vm.set_pc(dst)', desc: 'Jump to instruction dst' },
+  { sig: 'vm.define_method(m, i)', desc: 'Register method iseq on current class' },
+  { sig: 'vm.sendish(cd)', desc: 'Dispatch method call → returns result' },
+  { sig: 'vm.self_value', desc: 'Current self object' },
+]
+
 export function TutorialPane({ step, result }: TutorialPaneProps) {
   const [showBytecode, setShowBytecode] = useState(false)
+  const [showApi, setShowApi] = useState(false)
 
   return (
     <div className="tutorial-pane">
+      <div className="section description-section">
+        {step.description}
+      </div>
+
       <div className="section">
-        <h2>{step.title}</h2>
-        <div className="description">
-          {step.description.split('\n').map((line, i) => (
-            <div key={i}>{line}</div>
+        <h3>Test Cases</h3>
+        <div className="test-cases-preview">
+          {step.testCases.map((tc, i) => (
+            <div key={i} className="test-case-row">
+              <code className="test-source">{tc.source}</code>
+              <span className="test-arrow">→</span>
+              <code className="test-expected">{String(tc.expected)}</code>
+            </div>
           ))}
         </div>
-      </div>
-
-      <div className="section">
-        <h3>Instructions</h3>
-        <p className="instructions-text">{step.instructions}</p>
-      </div>
-
-      <div className="section">
-        <h3>Test Code</h3>
-        <pre className="code-block">{step.testCases[0]?.source || 'No test'}</pre>
       </div>
 
       {step.bytecodePreview && (
@@ -44,6 +55,27 @@ export function TutorialPane({ step, result }: TutorialPaneProps) {
           )}
         </div>
       )}
+
+      <div className="section">
+        <button
+          className="toggle-btn api-toggle"
+          onClick={() => setShowApi(!showApi)}
+        >
+          {showApi ? '▼' : '▶'} VM API Reference
+        </button>
+        {showApi && (
+          <table className="api-table">
+            <tbody>
+              {VM_API.map(({ sig, desc }) => (
+                <tr key={sig}>
+                  <td><code>{sig}</code></td>
+                  <td>{desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       {result && result.allPassed && (
         <div className="section success-box">

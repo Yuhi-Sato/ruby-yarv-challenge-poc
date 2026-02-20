@@ -5,41 +5,29 @@
   position: relative;
 }
 
-.editor-tabs {
+.editor-toolbar {
   display: flex;
-  border-bottom: 1px solid #ddd;
+  justify-content: flex-end;
+  padding: 0.3rem 0.5rem;
   background: #f9f9f9;
+  border-bottom: 1px solid #ddd;
 }
 
-.tab {
-  flex: 1;
-  padding: 0.75rem;
-  border: none;
+.reset-btn {
+  padding: 0.3rem 0.75rem;
   background: transparent;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  color: #777;
+  font-size: 0.8rem;
   cursor: pointer;
-  font-weight: 500;
-  color: #666;
-  border-bottom: 3px solid transparent;
   transition: all 0.2s;
 }
 
-.tab:hover:not(:disabled) {
-  background: #f0f0f0;
-}
-
-.tab.active {
-  color: #0066cc;
-  border-bottom-color: #0066cc;
-}
-
-.tab:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.tab.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.reset-btn:hover {
+  background: #fff0f0;
+  border-color: #e57373;
+  color: #c62828;
 }
 
 .editor-container {
@@ -52,7 +40,7 @@
   position: absolute;
   bottom: 1rem;
   right: 1rem;
-  background: rgba(0, 102, 204, 0.9);
+  background: rgba(139, 0, 0, 0.9);
   color: white;
   padding: 0.75rem 1rem;
   border-radius: 6px;

@@ -9,6 +9,18 @@ import { ResultPane } from './components/ResultPane'
 import { STEPS } from './steps'
 import './App.css'
 
+const VM_API_LINES = [
+  'vm.push(x)           # Push value onto stack',
+  'vm.pop               # Pop and return top value',
+  'vm.topn(n)           # Peek nth from top (1 = top)',
+  'vm.env_read(index)   # Read local variable at index',
+  'vm.env_write(idx, v) # Write local variable at index',
+  'vm.set_pc(dst)       # Jump to instruction dst',
+  'vm.define_method(m, iseq)  # Register method on current class',
+  'vm.sendish(cd)       # Dispatch method call → returns result',
+  'vm.self_value        # Current self object',
+]
+
 function App() {
   const { vmRef, status, error } = useRubyVM()
   const { state, goToStep, updateCode, runTests } = useChallenge({ vmRef })
@@ -33,7 +45,11 @@ function App() {
       <div className="loading-screen">
         <h1>Ruby YARV Challenge</h1>
         <div className="spinner" />
-        <p>Loading ruby.wasm...</p>
+        <p className="loading-msg">Loading ruby.wasm…</p>
+        <div className="loading-api">
+          <p className="loading-api-title">VM API you'll use:</p>
+          <pre className="loading-api-code">{VM_API_LINES.join('\n')}</pre>
+        </div>
       </div>
     )
   }
@@ -51,11 +67,15 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🦀 Ruby YARV Challenge</h1>
-        <p>Learn Ruby VM & Compiler Implementation</p>
+        <h1>Ruby YARV Challenge</h1>
+        <p>Implement a Ruby VM &amp; compiler — step by step</p>
       </header>
 
-      <StepNav currentStep={state.currentStep} onStepChange={goToStep} />
+      <StepNav
+        currentStep={state.currentStep}
+        completedSteps={state.completedSteps}
+        onStepChange={goToStep}
+      />
 
       {currentStep && (
         <Layout
@@ -64,10 +84,18 @@ function App() {
             <EditorPane
               code={state.userCode[state.currentStep] ?? currentStep.stub}
               onChange={updateCode}
+              onReset={() => updateCode(currentStep.stub)}
               isRunning={state.isRunning}
             />
           }
-          right={<ResultPane result={state.lastResult} />}
+          right={
+            <ResultPane
+              result={state.lastResult}
+              expectedBytecode={currentStep.bytecodePreview}
+              onNextStep={() => goToStep(state.currentStep + 1)}
+              isLastStep={state.currentStep === STEPS[STEPS.length - 1].id}
+            />
+          }
         />
       )}
 
@@ -78,7 +106,7 @@ function App() {
           onClick={runTests}
           disabled={state.isRunning}
         >
-          {state.isRunning ? '⏳ Running...' : '▶️ Run Tests'}
+          {state.isRunning ? '⏳ Running...' : '▶ Run Tests'}
         </button>
         <span className="shortcut-hint">Ctrl+Enter / Cmd+Enter</span>
       </footer>
