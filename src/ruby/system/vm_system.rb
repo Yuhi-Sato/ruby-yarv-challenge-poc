@@ -79,8 +79,7 @@ class YRuby
   # Call metadata (matches yruby architecture)
   # ============================================================
 
-  CallInfo = Struct.new(:mid, :argc, keyword_init: true)
-  CallData = Struct.new(:ci, keyword_init: true)
+  CallData = Struct.new(:mid, :argc, keyword_init: true)
 
   # ============================================================
   # Instruction Base Class
@@ -217,7 +216,7 @@ class YRuby
         @cd = cd
       end
       def to_s
-        "#{super} :#{@cd.ci.mid}, #{@cd.ci.argc}"
+        "#{super} :#{@cd.mid}, #{@cd.argc}"
       end
     end
   end
@@ -321,20 +320,19 @@ class MinRuby
   # Special case: :puts writes to $challenge_output.
   # Returns the method's return value (caller must push it).
   def sendish(cd)
-    ci = cd.ci
-    argc = ci.argc
+    argc = cd.argc
     # Collect args in order (topn(argc) is first arg, topn(1) is last)
     args = argc.times.map { |i| topn(argc - i) }
     recv = topn(argc + 1)
     (argc + 1).times { pop }
 
-    if ci.mid == :puts
+    if cd.mid == :puts
       args.each { |a| $challenge_output = ($challenge_output || '') + a.to_s + "\n" }
       return nil
     end
 
-    method_iseq = recv.klass.lookup_method(ci.mid)
-    raise "undefined method '#{ci.mid}'" unless method_iseq
+    method_iseq = recv.klass.lookup_method(cd.mid)
+    raise "undefined method '#{cd.mid}'" unless method_iseq
     invoke_method(recv, method_iseq, args)
   end
 

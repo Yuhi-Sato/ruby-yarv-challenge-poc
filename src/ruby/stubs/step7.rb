@@ -45,8 +45,8 @@ end
 # ---- VM: OptSendWithoutBlock ----
 #
 # Dispatch a method call. @cd is a YRuby::CallData struct containing:
-#   @cd.ci.mid   — method name (symbol)
-#   @cd.ci.argc  — argument count
+#   @cd.mid   — method name (symbol)
+#   @cd.argc  — argument count
 #
 # vm.sendish(@cd) handles everything:
 #   - pops argc arguments and the receiver from the stack
@@ -93,7 +93,7 @@ class YRuby::Compiler
   # Finally, emit OptSendWithoutBlock with a CallData struct.
   #
   # CallData construction:
-  #   cd = YRuby::CallData.new(ci: YRuby::CallInfo.new(mid: node.name, argc: args.size))
+  #   cd = YRuby::CallData.new(mid: node.name, argc: args.size)
   #
   def compile_general_call(node, iseq)
     # TODO:
@@ -104,7 +104,7 @@ class YRuby::Compiler
     # end
     # args = node.arguments&.arguments || []
     # args.each { |arg| compile_node(arg, iseq) }
-    # cd = YRuby::CallData.new(ci: YRuby::CallInfo.new(mid: node.name, argc: args.size))
+    # cd = YRuby::CallData.new(mid: node.name, argc: args.size)
     # iseq.emit(YRuby::Instructions::OptSendWithoutBlock.new(cd))
     raise NotImplementedError, "compile_general_call not implemented"
   end
