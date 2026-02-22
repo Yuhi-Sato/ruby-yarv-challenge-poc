@@ -10,29 +10,34 @@
 
 # ---- VM: OptMinus ----
 #
-# Same LIFO order as OptPlus — pop b first, then a.
-# Order matters! a - b, NOT b - a.
+# Same pattern as OptPlus:
+#   vm.topn(2) = left operand (a)
+#   vm.topn(1) = right operand (b)
+# Order matters! Push a - b, NOT b - a.
 #
 # Stack before: [10, 3]
 # Stack after:  [7]
 #
-class YRuby::Instructions::OptMinus < YRuby::Instructions::Base
-  def call(vm)
-    # TODO: Pop b, pop a, push a - b
-    raise NotImplementedError, "OptMinus#call not implemented"
+class YRuby::Insns::OptMinus
+  def self.call(vm)
+    # TODO: Read both operands, pop them, push a - b
+    # recv = vm.topn(2)
+    # arg = vm.topn(1)
+    # vm.pop
+    # vm.pop
+    # vm.push(recv - arg)
+    raise NotImplementedError, "OptMinus.call not implemented"
   end
 end
 
 # ---- Compiler: compile_binary_minus ----
 #
 # Same pattern as compile_binary_plus, but emit OptMinus.
+# The operands are already compiled by compile_call_node_dispatch.
 #
-class YRuby::Compiler
-  def compile_binary_minus(node, iseq)
-    # TODO:
-    # compile_node(node.receiver, iseq)
-    # compile_node(node.arguments.arguments[0], iseq)
-    # iseq.emit(YRuby::Instructions::OptMinus.new)
+class YRuby::Compile
+  def compile_binary_minus(iseq, node)
+    # TODO: iseq.emit(YRuby::Insns::OptMinus)
     raise NotImplementedError, "compile_binary_minus not implemented"
   end
 end

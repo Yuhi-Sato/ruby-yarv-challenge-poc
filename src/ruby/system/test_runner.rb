@@ -7,7 +7,7 @@ class ChallengeTestRunner
   def test(description, source, expected)
     $challenge_output = ""
     begin
-      result = @vm.run(source)
+      result = @vm.exec(source)
       passed = result == expected
       @results << {
         description: description,

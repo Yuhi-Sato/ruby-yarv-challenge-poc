@@ -13,32 +13,38 @@
 # The stack for `1 + 2` looks like:
 #   stack: [1, 2]   sp points past 2
 #
-# Stack is LIFO: the first pop gives the right operand (b),
-# the second pop gives the left operand (a).
-# Push a + b.
+# Stack is LIFO:
+#   vm.topn(2) gives the left operand (a = 1)
+#   vm.topn(1) gives the right operand (b = 2)
+# Pop both, then push a + b.
 #
 # Stack before: [1, 2]
 # Stack after:  [3]
 #
-class YRuby::Instructions::OptPlus < YRuby::Instructions::Base
-  def call(vm)
-    # TODO: Pop the right operand (b), then the left (a), push a + b
-    raise NotImplementedError, "OptPlus#call not implemented"
+class YRuby::Insns::OptPlus
+  def self.call(vm)
+    # TODO: Read both operands, pop them, push the sum
+    # recv = vm.topn(2)
+    # arg = vm.topn(1)
+    # vm.pop
+    # vm.pop
+    # vm.push(recv + arg)
+    raise NotImplementedError, "OptPlus.call not implemented"
   end
 end
 
 # ---- Compiler: compile_binary_plus ----
 #
-# A binary + CallNode has:
-#   node.receiver        — the left operand (e.g., 1)
-#   node.arguments.arguments[0] — the right operand (e.g., 2)
+# When compile_call_node_dispatch encounters a + operator,
+# it has already compiled the left operand (node.receiver)
+# and the right operand (node.arguments) onto the stack.
 #
-# Compile the left operand, compile the right operand,
-# then emit OptPlus.
+# You only need to emit the OptPlus instruction.
 #
-class YRuby::Compiler
-  def compile_binary_plus(node, iseq)
-    # TODO: Compile left, compile right, emit OptPlus
+class YRuby::Compile
+  def compile_binary_plus(iseq, node)
+    # TODO: Emit OptPlus instruction
+    # iseq.emit(YRuby::Insns::OptPlus)
     raise NotImplementedError, "compile_binary_plus not implemented"
   end
 end

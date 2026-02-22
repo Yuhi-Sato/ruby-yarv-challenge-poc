@@ -3,8 +3,8 @@ import type { ChallengeState, RunResult, TestResult } from '../types'
 import { STEPS } from '../steps'
 
 // Import Ruby system files as raw strings
-import vmSystemRb from '../ruby/system/vm_system.rb?raw'
-import compilerSystemRb from '../ruby/system/compiler_system.rb?raw'
+import yrubyBundleRb from '../ruby/system/yruby_bundle.rb?raw'
+import challengeResetRb from '../ruby/system/challenge_reset.rb?raw'
 import testRunnerRb from '../ruby/system/test_runner.rb?raw'
 
 interface UseChallengeOptions {
@@ -71,18 +71,16 @@ export function useChallenge({ vmRef }: UseChallengeOptions) {
         })
         .join('\n')
 
-      // Merge: system infrastructure + all user implementations + tests
+      // Merge: yruby gem bundle + challenge reset + test runner + user code + tests
       const fullCode = [
-        vmSystemRb,
-        compilerSystemRb,
+        yrubyBundleRb,
+        challengeResetRb,
         testRunnerRb,
         accumulatedUserCode,
         `
 $challenge_output = ""
 $test_output = []
-parser = YRuby::Parser.new
-compiler = YRuby::Compiler.new
-_vm = MinRuby.new(parser, compiler)
+_vm = YRuby.new
 runner = ChallengeTestRunner.new(_vm)
 
 ${testInvocations}
@@ -94,8 +92,8 @@ $test_output << "---END_REPORT---"
 if runner.all_passed?
   $test_output << "---DISASM_START---"
   begin
-    ast = parser.parse(${JSON.stringify(currentStep.testCases[0]?.source || '')})
-    iseq = compiler.compile(ast)
+    ast = YRuby::Parser.new.parse(${JSON.stringify(currentStep.testCases[0]?.source || '')})
+    iseq = YRuby::Iseq.iseq_new_main(ast)
     $test_output << iseq.disasm
   rescue => e
     $test_output << "Error: #{e.message}"
