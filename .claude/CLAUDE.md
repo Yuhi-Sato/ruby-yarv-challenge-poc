@@ -21,9 +21,10 @@ fib(10)  # => 55
 ## Architecture
 
 ### Technology Stack
-- **Frontend:** React 18 + TypeScript
+- **Frontend:** React 19 + TypeScript
 - **Code Editor:** Monaco Editor (VS Code in browser)
-- **Runtime:** ruby.wasm (WebAssembly Ruby in browser)
+- **Runtime:** ruby.wasm (`@ruby/4.0-wasm-wasi`) — Ruby 4.0 WebAssembly in browser
+- **Build:** Vite 7 + vite-plugin-wasm + vite-plugin-top-level-await
 - **Hosting:** Static (Vercel / GitHub Pages / Cloudflare)
 - **No backend server required** - everything runs in the user's browser
 
@@ -37,7 +38,7 @@ Steps accumulate: when running step N, user code from steps 1..N is all merged t
 - Step 3: `opt_minus` (VM) + `compile_binary_minus` (Compiler)
 - Step 4: `getlocal` / `setlocal` (VM) + `compile_local_var_read` / `compile_local_var_write` (Compiler)
 - Step 5: `opt_lt` (VM) + `compile_binary_lt` (Compiler)
-- Step 6: `branchunless` / `jump` / `leave` (VM) + `compile_if_node` (Compiler)
+- Step 6: `branchunless` / `jump` (VM) + `compile_conditional_node` (Compiler)
 - Step 7: `definemethod` / `opt_send_without_block` (VM) + `compile_def_node` / `compile_general_call` (Compiler)
 
 ### Core UX Flow
@@ -45,11 +46,11 @@ Steps accumulate: when running step N, user code from steps 1..N is all merged t
 ```
 Participant writes code in Monaco Editor
     ↓
-Clicks "Run Tests"
+Clicks "Run Tests" (or Ctrl+Enter / Cmd+Enter)
     ↓
-JavaScript merges [system code + participant code + test code]
+JavaScript merges [yruby bundle + challenge reset + user code + test code]
     ↓
-ruby.wasm evaluates merged code with `eval()`
+ruby.wasm evaluates merged code with vm.eval()
     ↓
 Results displayed: PASS ✅ / FAIL ❌ per test case
 ```
@@ -59,44 +60,43 @@ Results displayed: PASS ✅ / FAIL ❌ per test case
 ## Project Structure
 
 ```
-ruby-yarv-challenge/
-├── package.json                     # npm dependencies
+ruby-yarv-challenge-poc/
+├── package.json
 ├── vite.config.ts                  # Vite + WASM plugins
+├── index.html
+├── public/
+│   └── ruby+yruby.wasm            # Pre-built WASM binary
+├── rubies/                         # Ruby source for WASM build
+├── scripts/                        # Build scripts
 ├── src/
 │   ├── main.tsx
-│   ├── App.tsx                     # Main component (placeholder)
-│   ├── components/                 # React UI components (TO BUILD)
-│   │   ├── Layout.tsx              # 3-pane grid (30%|40%|30%)
-│   │   ├── TutorialPane.tsx        # Left: step description + bytecode
-│   │   ├── EditorPane.tsx          # Center: Monaco Editor
-│   │   ├── ResultPane.tsx          # Right: test results + pass/fail
-│   │   └── StepNav.tsx             # Top: step navigation
-│   ├── hooks/                      # React hooks
-│   │   ├── useRubyVM.ts           # ruby.wasm initialization (PARTIAL)
-│   │   └── useChallenge.ts        # State management + test execution (TO BUILD)
-│   ├── steps/                      # Step configuration data (TO BUILD)
-│   │   ├── index.ts
-│   │   ├── step1.ts ~ step7.ts
-│   │   └── compilerB1.ts ~ compilerB5.ts
-│   ├── types.ts                    # TypeScript types (TO BUILD)
-│   └── ruby/                       # Ruby source files
-│       ├── system/                 # System-provided code (embedded as strings)
-│       │   ├── vm_system.rb        # ✓ YRuby, MinRuby, system instructions
-│       │   ├── compiler_system.rb  # ✓ Parser + Compiler
-│       │   └── test_runner.rb      # ✓ Test framework
-│       └── stubs/                  # Participant-facing code skeletons
-│           ├── vm_step1_stub.rb    # ✓ Putobject
-│           ├── vm_step2_stub.rb    # TO BUILD: OptPlus
-│           ├── vm_step3_stub.rb    # TO BUILD: OptMinus
-│           ├── vm_step4_stub.rb    # TO BUILD: Getlocal/Setlocal
-│           ├── vm_step5_stub.rb    # TO BUILD: OptLt
-│           ├── vm_step6_stub.rb    # TO BUILD: Branchunless/Jump/Leave
-│           ├── vm_step7_stub.rb    # TO BUILD: Definemethod/OptSendWithoutBlock
-│           ├── compiler_b1_stub.rb # TO BUILD: IntegerNode
-│           ├── compiler_b2_stub.rb # TO BUILD: LocalVariable*Node
-│           ├── compiler_b3_stub.rb # TO BUILD: CallNode(:+,-,:<)
-│           ├── compiler_b4_stub.rb # TO BUILD: IfNode
-│           └── compiler_b5_stub.rb # TO BUILD: DefNode + general CallNode
+│   ├── App.tsx                     # Main component (loading/error/3-pane UI)
+│   ├── App.css
+│   ├── types.ts                    # TypeScript types
+│   ├── components/
+│   │   ├── Layout.tsx / Layout.css         # 3-pane grid
+│   │   ├── TutorialPane.tsx / TutorialPane.css  # Left: step description + bytecode
+│   │   ├── EditorPane.tsx / EditorPane.css      # Center: Monaco Editor
+│   │   ├── ResultPane.tsx / ResultPane.css      # Right: test results + pass/fail
+│   │   └── StepNav.tsx / StepNav.css            # Top: step navigation
+│   ├── hooks/
+│   │   ├── useRubyVM.ts            # ruby.wasm initialization (loads + requires prism)
+│   │   └── useChallenge.ts         # State management + test execution (accumulation model)
+│   ├── steps/
+│   │   └── index.ts                # All 7 StepConfig entries (JSX descriptions, test cases)
+│   └── ruby/
+│       ├── system/
+│       │   ├── yruby_bundle.rb     # Full yruby gem bundled for browser (VM, compiler, instructions)
+│       │   ├── challenge_reset.rb  # Overrides participant methods with NotImplementedError
+│       │   └── test_runner.rb      # ChallengeTestRunner class
+│       └── stubs/                  # Participant-facing code skeletons (combined VM + compiler)
+│           ├── step1.rb            # Putobject + compile_integer_node
+│           ├── step2.rb            # OptPlus + compile_binary_plus
+│           ├── step3.rb            # OptMinus + compile_binary_minus
+│           ├── step4.rb            # Getlocal/Setlocal + compile_local_var_read/write
+│           ├── step5.rb            # OptLt + compile_binary_lt
+│           ├── step6.rb            # Branchunless/Jump + compile_conditional_node
+│           └── step7.rb            # Definemethod/OptSendWithoutBlock + compile_def_node/compile_general_call
 └── .claude/
     └── CLAUDE.md (this file)
 ```
@@ -105,90 +105,131 @@ ruby-yarv-challenge/
 
 ## Key Implementation Details
 
-### 1. VM User-Facing API (yruby-aligned)
+### 1. yruby Gem Architecture
 
-```ruby
-vm.push(value)         # push onto stack
-vm.pop                 # pop from stack
-vm.topn(n)             # peek without popping (1-indexed)
-vm.env_read(index)     # read local variable (internally: stack[ep - index])
-vm.env_write(index, v) # write local variable
-vm.set_pc(dst)         # set program counter (for branch instructions)
-vm.self_value          # the current self object
-vm.define_method(mid, iseq)  # register a method on self's class
-vm.sendish(cd)         # dispatch a method call (pops recv+args, returns result)
+The project bundles the **yruby gem** (`yruby_bundle.rb`) which provides a fully working Ruby VM. The `challenge_reset.rb` file then overrides specific methods with `NotImplementedError`, and participant stubs re-override those methods.
+
+```
+yruby_bundle.rb          # Full working VM + compiler
+    ↓
+challenge_reset.rb        # Stub out methods participants must implement
+    ↓
+step1.rb .. stepN.rb      # Participant's implementations (re-override)
 ```
 
-### 2. Branch Instruction Offset (IMPORTANT — yruby-aligned)
+### 2. Instruction Pattern (Class Methods)
 
-PC is incremented **BEFORE** instruction execution:
+Instructions are class methods on `YRuby::Insns::*`, not instance methods:
 
 ```ruby
-# In the execute loop:
-loop do
-  insn = iseq[pc]
-  pc += 1              # ← incremented FIRST
-  insn.call(self)      # ← then executed
+class YRuby::Insns::Putobject
+  def self.call(vm, value)
+    vm.push(value)
+  end
 end
 
-# So Jump uses vm.set_pc(@dst) directly — NO -1 needed:
-class Jump < Base
-  def call(vm)
-    vm.set_pc(@dst)    # ← just @dst, not @dst - 1
+class YRuby::Insns::OptPlus
+  def self.call(vm)
+    a, b = vm.pop, vm.pop
+    vm.push(a + b)
   end
 end
 ```
 
-### 3. Code Merging Strategy (Accumulation Model)
+### 3. Compiler Pattern (Method-per-node on YRuby::Compile)
 
-Each time "Run Tests" is clicked for step N, ruby.wasm receives:
-
-```
-1. vm_system.rb           # VM infrastructure only (no instruction logic)
-2. compiler_system.rb     # Compiler scaffold (all methods raise NotImplementedError)
-3. test_runner.rb         # ChallengeTestRunner class
-4. userCode[1]            # user's step 1 implementation
-5. userCode[2]            # user's step 2 implementation (if N >= 2)
-...
-N. userCode[N]            # user's current step implementation
-N+1. test invocations     # runner.test(...) calls
-```
-
-Steps depend on each other: failing step 1 will break step 2's tests too.
-
-### 4. Compiler: Method-per-node Pattern
-
-Instead of one `compile_node` case statement, the compiler uses focused methods:
+The compiler class is `YRuby::Compile` (not `YRuby::Compiler`). Method signature is `(iseq, node)` — iseq first:
 
 ```ruby
-class YRuby::Compiler
-  def compile_integer_node(node, iseq)    # Step 1 — user implements
-  def compile_binary_plus(node, iseq)     # Step 2 — user implements
-  def compile_binary_minus(node, iseq)    # Step 3 — user implements
-  def compile_local_var_read(node, iseq)  # Step 4 — user implements
-  def compile_local_var_write(node, iseq) # Step 4 — user implements
-  def compile_binary_lt(node, iseq)       # Step 5 — user implements
-  def compile_if_node(node, iseq)         # Step 6 — user implements
-  def compile_def_node(node, iseq)        # Step 7 — user implements
-  def compile_general_call(node, iseq)    # Step 7 — user implements
+class YRuby::Compile
+  def compile_integer_node(iseq, node)    # Step 1
+  def compile_binary_plus(iseq, node)     # Step 2
+  def compile_binary_minus(iseq, node)    # Step 3
+  def compile_local_var_read(iseq, node)  # Step 4
+  def compile_local_var_write(iseq, node) # Step 4
+  def compile_binary_lt(iseq, node)       # Step 5
+  def compile_conditional_node(iseq, node) # Step 6
+  def compile_def_node(iseq, node)        # Step 7
+  def compile_general_call(iseq, node)    # Step 7
 end
 ```
 
 The main `compile_node` dispatch is system-provided and delegates to these methods.
 
+### 4. VM User-Facing API
+
+```ruby
+vm.push(x)              # Push value onto stack
+vm.pop                  # Pop and return top value
+vm.topn(n)              # Peek nth from top (1 = top)
+vm.env_read(-idx)       # Read local variable at idx
+vm.env_write(-idx, v)   # Write local variable at idx
+vm.add_pc(offset)       # Adjust PC by relative offset (for branches)
+vm.define_method(m, iseq)   # Register method on class
+vm.sendish(cd)          # Dispatch method call
+```
+
+### 5. Branch Instructions — Relative Offsets (IMPORTANT)
+
+PC advances by instruction LEN **BEFORE** execution. Branch instructions use **relative offsets**, not absolute positions:
+
+```ruby
+# In the execute loop:
+#   insn_class = iseq.fetch(pc)
+#   len = insn_class::LEN
+#   operands = fetch operands...
+#   pc += len             ← advanced first
+#   insn_class.call(vm, *operands) ← then executed
+
+# So branch instructions use vm.add_pc(offset):
+class YRuby::Insns::Jump
+  def self.call(vm, dst)
+    vm.add_pc(dst)        # relative offset from current position
+  end
+end
+
+class YRuby::Insns::Branchunless
+  def self.call(vm, dst)
+    val = vm.topn(1)
+    vm.pop
+    vm.add_pc(dst) unless val
+  end
+end
+```
+
+The compiler uses `emit_placeholder` / `patch_at!` for forward-reference patching:
+```ruby
+# branchunless_pc = iseq.size
+# iseq.emit_placeholder(YRuby::Insns::Branchunless::LEN)
+# ... compile branches ...
+# offset = target_pc - (branchunless_pc + Branchunless::LEN)
+# iseq.patch_at!(branchunless_pc, Branchunless, offset)
+```
+
+### 6. Code Merging Strategy (Accumulation Model)
+
+Each time "Run Tests" is clicked for step N, ruby.wasm receives:
+
+```
+1. yruby_bundle.rb        # Full yruby gem (working VM + compiler)
+2. challenge_reset.rb     # Stub out participant methods with NotImplementedError
+3. test_runner.rb         # ChallengeTestRunner class
+4. userCode[1]            # user's step 1 implementation (re-overrides)
+5. userCode[2]            # user's step 2 implementation (if N >= 2)
+...
+N+3. userCode[N]          # user's current step implementation
+N+4. test invocations     # runner.test(...) calls + output capture
+```
+
+Steps depend on each other: failing step 1 will break step 2's tests too.
+
 ---
 
 ## Reference Implementation
 
-This project is based on **yruby** (your own Ruby VM implementation):
-- **Source:** `/Users/satouyuhi/YRuby/`
-- **Key files:**
-  - `lib/yruby.rb` - MinRuby VM with SP/EP stack management
-  - `lib/yruby/compiler.rb` - AST to bytecode compiler
-  - `lib/yruby/instructions/` - Individual instruction implementations
-  - `test/yruby_test.rb` - Test cases
-
-The system Ruby files (`vm_system.rb`, `compiler_system.rb`) are adapted directly from yruby.
+This project is based on **yruby** (Ruby VM gem):
+- **GitHub:** https://github.com/Yuhi-Sato/yruby
+- **Bundled as:** `src/ruby/system/yruby_bundle.rb` (all gem files concatenated)
 
 ---
 
@@ -202,7 +243,7 @@ npm run dev      # Start Vite dev server on http://localhost:5173
 
 ### Production Build
 ```bash
-npm run build
+npm run build    # tsc + vite build → ./dist/
 npm run preview  # Preview production build locally
 ```
 
@@ -215,42 +256,27 @@ npm run build    # Creates ./dist/
 
 ---
 
-## Testing
+## Current Status
 
-### Current Status
-- ✅ Phase 1: Infrastructure setup
-  - Vite project initialized
-  - ruby.wasm + Monaco + WASM plugins installed
-  - vite.config.ts configured
-
-- ✅ Phase 2: System Ruby files created
-  - vm_system.rb (YRuby/MinRuby complete)
-  - compiler_system.rb (Parser + Compiler complete)
-  - test_runner.rb (Test framework complete)
-  - vm_step1_stub.rb (Putobject skeleton started)
-
-- ⏳ Phase 3: TO BUILD NEXT
-  - Remaining stub files (vm_step2-7, compiler_b1-5)
-  - TypeScript step configuration
-  - React UI components
-  - useChallenge hook implementation
-  - ruby.wasm integration testing
-
-### Verification Steps
-1. Run individual steps with correct solutions (from YRuby)
-2. Verify all test cases pass
-3. Check bytecode disassembly matches expected
-4. Test end-to-end: fib(10) = 55 in browser
+All core features are implemented:
+- ✅ Vite + ruby.wasm + Monaco infrastructure
+- ✅ yruby gem bundled for browser (`yruby_bundle.rb`)
+- ✅ Challenge reset system (`challenge_reset.rb`)
+- ✅ All 7 step stubs (`step1.rb` ~ `step7.rb`)
+- ✅ Step configurations with JSX descriptions and test cases (`steps/index.ts`)
+- ✅ React UI components (Layout, TutorialPane, EditorPane, ResultPane, StepNav)
+- ✅ useChallenge hook with accumulation model
+- ✅ useRubyVM hook (Ruby 4.0 + Prism)
 
 ---
 
-## Important Notes for Implementation
+## Important Notes
 
 ### ruby.wasm Integration
-- Module is loaded asynchronously on app startup
-- Use `vm.eval(code)` to execute Ruby strings
-- Prism gem is pre-required for AST parsing
-- Output must be captured via `$challenge_output` global (stdout capture is unreliable)
+- Module is loaded asynchronously on app startup via `useRubyVM`
+- Uses `@ruby/4.0-wasm-wasi` (Ruby 4.0) with `@ruby/wasm-wasi` DefaultRubyVM
+- Prism is built into Ruby 4.0 — required on init for AST parsing
+- Output captured via `$test_output` array joined with newlines
 
 ### Scope (Fib-Only)
 These instructions are **NOT** needed:
@@ -259,24 +285,11 @@ These instructions are **NOT** needed:
 - `putstring`, `send` with blocks (fib doesn't use)
 
 ### UI/UX
-- 3-pane layout: 30% tutorial | 40% editor | 30% results
-- Each step should show:
-  - Clear description (left pane)
-  - Expected bytecode (left pane)
-  - Test Ruby code (left pane)
-  - Syntax-highlighted editor (center pane)
+- 3-pane layout: tutorial | editor | results
+- Each step shows:
+  - Description with VM + compiler explanation (left pane)
+  - Expected bytecode preview (left pane)
+  - Syntax-highlighted Monaco editor (center pane)
   - Test results with PASS/FAIL colors (right pane)
-  - Bytecode disassembly (right pane)
-
----
-
-## Next Steps (Priority Order)
-
-1. **Complete VM stubs** (vm_step2-7)
-2. **Complete compiler stubs** (compiler_b1-5)
-3. **Create TypeScript step configs** (stepConfig data)
-4. **Build React components** (Layout, Editor, Tutorial, Result)
-5. **Implement useChallenge hook** (state + test execution)
-6. **Test ruby.wasm integration** end-to-end
-7. **Fix any bugs** and add error handling
-8. **Deploy** to static hosting
+  - Bytecode disassembly on all-pass (right pane)
+- Keyboard shortcut: Ctrl+Enter / Cmd+Enter to run tests
