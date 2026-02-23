@@ -60,7 +60,7 @@ end
 #
 # Look up the index in index_lookup_table and emit Getlocal.
 #
-class YRuby::Compile
+module Patch
   def compile_local_var_read(iseq, node)
     # TODO: Look up node.name in @index_lookup_table, emit Getlocal with that index
     # idx = @index_lookup_table[node.name]

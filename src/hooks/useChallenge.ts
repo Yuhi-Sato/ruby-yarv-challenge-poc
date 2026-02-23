@@ -3,7 +3,7 @@ import type { ChallengeState, RunResult, TestResult } from '../types'
 import { STEPS } from '../steps'
 
 // Import Ruby system files as raw strings
-import yrubyBundleRb from '../ruby/system/yruby_bundle.rb?raw'
+import challengePatchRb from '../ruby/system/challenge_patch.rb?raw'
 import challengeResetRb from '../ruby/system/challenge_reset.rb?raw'
 import testRunnerRb from '../ruby/system/test_runner.rb?raw'
 
@@ -71,9 +71,10 @@ export function useChallenge({ vmRef }: UseChallengeOptions) {
         })
         .join('\n')
 
-      // Merge: yruby gem bundle + challenge reset + test runner + user code + tests
+      // Merge: patch module + challenge reset + test runner + user code + tests
+      // Note: yruby gem is already loaded via require 'yruby' in useRubyVM
       const fullCode = [
-        yrubyBundleRb,
+        challengePatchRb,
         challengeResetRb,
         testRunnerRb,
         accumulatedUserCode,

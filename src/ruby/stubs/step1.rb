@@ -30,7 +30,7 @@ end
 #
 # Emit a Putobject instruction carrying that value.
 #
-class YRuby::Compile
+module Patch
   def compile_integer_node(iseq, node)
     # TODO: Emit a Putobject instruction with the integer value
     # iseq.emit(YRuby::Insns::Putobject, node.value)

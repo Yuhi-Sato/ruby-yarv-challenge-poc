@@ -35,13 +35,13 @@ end
 
 # ---- Compiler: compile_binary_plus ----
 #
-# When compile_call_node_dispatch encounters a + operator,
+# When compile_call_node encounters a + operator,
 # it has already compiled the left operand (node.receiver)
 # and the right operand (node.arguments) onto the stack.
 #
 # You only need to emit the OptPlus instruction.
 #
-class YRuby::Compile
+module Patch
   def compile_binary_plus(iseq, node)
     # TODO: Emit OptPlus instruction
     # iseq.emit(YRuby::Insns::OptPlus)

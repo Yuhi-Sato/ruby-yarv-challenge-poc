@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 // @ts-ignore
 import { DefaultRubyVM } from '@ruby/wasm-wasi/dist/browser'
 // @ts-ignore
-import rubyWasm from '@ruby/4.0-wasm-wasi/dist/ruby+stdlib.wasm?url'
+import rubyWasm from '/ruby+yruby.wasm?url'
 
 export type VMStatus = 'loading' | 'ready' | 'error'
 export type VMInstance = any // ruby.wasm types are not well typed
@@ -31,6 +31,10 @@ export function useRubyVM() {
 
         // Prism is built into Ruby 4.0 — require it upfront
         vm.eval(`require 'prism'`)
+
+        // yruby gem is packed into the wasm VFS under /usr/local/lib/ruby/yruby/
+        vm.eval(`$LOAD_PATH.unshift('/usr/local/lib/ruby/yruby')`)
+        vm.eval(`require 'yruby'`)
 
         vmRef.current = vm
         setStatus('ready')

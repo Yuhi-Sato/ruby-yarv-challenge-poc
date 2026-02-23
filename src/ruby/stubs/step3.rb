@@ -33,9 +33,9 @@ end
 # ---- Compiler: compile_binary_minus ----
 #
 # Same pattern as compile_binary_plus, but emit OptMinus.
-# The operands are already compiled by compile_call_node_dispatch.
+# The operands are already compiled by compile_call_node.
 #
-class YRuby::Compile
+module Patch
   def compile_binary_minus(iseq, node)
     # TODO: iseq.emit(YRuby::Insns::OptMinus)
     raise NotImplementedError, "compile_binary_minus not implemented"

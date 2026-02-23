@@ -65,7 +65,7 @@ end
 # then emit Definemethod with the name and method iseq.
 # Also emit Putobject with the method name (Ruby convention: def returns name).
 #
-class YRuby::Compile
+module Patch
   def compile_def_node(iseq, node)
     # TODO:
     # method_iseq = YRuby::Iseq.iseq_new_method(node)
