@@ -83,7 +83,7 @@ end
 #      jump_offset = end_label - (then_end_pc + Jump::LEN)
 #      iseq.patch_at!(then_end_pc, Jump, jump_offset)
 #
-class YRuby::Compile
+module Patch
   def compile_conditional_node(iseq, node)
     raise NotImplementedError, "compile_conditional_node not implemented"
   end

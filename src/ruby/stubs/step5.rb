@@ -32,7 +32,7 @@ end
 #
 # Same pattern as compile_binary_plus, but emit OptLt.
 #
-class YRuby::Compile
+module Patch
   def compile_binary_lt(iseq, node)
     # TODO: iseq.emit(YRuby::Insns::OptLt)
     raise NotImplementedError, "compile_binary_lt not implemented"
