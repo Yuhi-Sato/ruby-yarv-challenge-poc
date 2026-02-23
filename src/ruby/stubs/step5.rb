@@ -10,16 +10,21 @@
 
 # ---- VM: OptLt ----
 #
-# Same LIFO pop order as OptPlus/OptMinus.
+# Same pattern as OptPlus/OptMinus.
 # Push a Ruby boolean: true or false.
 #
 # Stack before: [3, 5]
 # Stack after:  [true]
 #
-class YRuby::Instructions::OptLt < YRuby::Instructions::Base
-  def call(vm)
-    # TODO: Pop b, pop a, push (a < b)
-    raise NotImplementedError, "OptLt#call not implemented"
+class YRuby::Insns::OptLt
+  def self.call(vm)
+    # TODO: Read both operands, pop them, push (a < b)
+    # recv = vm.topn(2)
+    # arg = vm.topn(1)
+    # vm.pop
+    # vm.pop
+    # vm.push(recv < arg)
+    raise NotImplementedError, "OptLt.call not implemented"
   end
 end
 
@@ -27,12 +32,9 @@ end
 #
 # Same pattern as compile_binary_plus, but emit OptLt.
 #
-class YRuby::Compiler
-  def compile_binary_lt(node, iseq)
-    # TODO:
-    # compile_node(node.receiver, iseq)
-    # compile_node(node.arguments.arguments[0], iseq)
-    # iseq.emit(YRuby::Instructions::OptLt.new)
+class YRuby::Compile
+  def compile_binary_lt(iseq, node)
+    # TODO: iseq.emit(YRuby::Insns::OptLt)
     raise NotImplementedError, "compile_binary_lt not implemented"
   end
 end

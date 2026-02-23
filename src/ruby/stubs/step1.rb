@@ -13,27 +13,27 @@
 # `vm.push(x)` places x at the top of the stack.
 #
 # Stack before: []
-# Stack after:  [@object]
+# Stack after:  [value]
 #
-class YRuby::Instructions::Putobject < YRuby::Instructions::Base
-  def call(vm)
-    # TODO: Push @object onto the stack
-    # vm.push(...)
-    raise NotImplementedError, "Putobject#call not implemented"
+class YRuby::Insns::Putobject
+  def self.call(vm, value)
+    # TODO: Push value onto the stack
+    # vm.push(value)
+    raise NotImplementedError, "Putobject.call not implemented"
   end
 end
 
-# ---- Compiler: IntegerNode ----
+# ---- Compiler: compile_integer_node ----
 #
 # A Prism::IntegerNode represents a literal integer in source code.
 # node.value holds the integer (e.g., 42).
 #
 # Emit a Putobject instruction carrying that value.
 #
-class YRuby::Compiler
-  def compile_integer_node(node, iseq)
+class YRuby::Compile
+  def compile_integer_node(iseq, node)
     # TODO: Emit a Putobject instruction with the integer value
-    # iseq.emit(YRuby::Instructions::Putobject.new(...))
+    # iseq.emit(YRuby::Insns::Putobject, node.value)
     raise NotImplementedError, "compile_integer_node not implemented"
   end
 end

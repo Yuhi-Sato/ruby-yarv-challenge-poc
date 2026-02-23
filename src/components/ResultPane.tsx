@@ -10,9 +10,9 @@ interface ResultPaneProps {
 
 function prettifyError(msg: string): string {
   // Detect NotImplementedError — tell user what to implement
-  const niMatch = msg.match(/(\w+)#(\w+) not implemented/)
+  const niMatch = msg.match(/(\w+(?:\.\w+)?)\s+not implemented/)
   if (niMatch) {
-    return `${niMatch[1]}#${niMatch[2]} is not implemented yet.\nImplement it in the editor, then click Run Tests.`
+    return `${niMatch[1]} is not implemented yet.\nImplement it in the editor, then click Run Tests.`
   }
   // Strip internal eval stack frames to reduce noise
   return msg

@@ -10,15 +10,14 @@ import { STEPS } from './steps'
 import './App.css'
 
 const VM_API_LINES = [
-  'vm.push(x)           # Push value onto stack',
-  'vm.pop               # Pop and return top value',
-  'vm.topn(n)           # Peek nth from top (1 = top)',
-  'vm.env_read(index)   # Read local variable at index',
-  'vm.env_write(idx, v) # Write local variable at index',
-  'vm.set_pc(dst)       # Jump to instruction dst',
-  'vm.define_method(m, iseq)  # Register method on current class',
-  'vm.sendish(cd)       # Dispatch method call → returns result',
-  'vm.self_value        # Current self object',
+  'vm.push(x)            # Push value onto stack',
+  'vm.pop                # Pop and return top value',
+  'vm.topn(n)            # Peek nth from top (1 = top)',
+  'vm.env_read(-idx)     # Read local variable at idx',
+  'vm.env_write(-idx, v) # Write local variable at idx',
+  'vm.add_pc(offset)     # Adjust PC by offset (for branches)',
+  'vm.define_method(m, iseq)  # Register method on class',
+  'vm.sendish(cd)        # Dispatch method call',
 ]
 
 function App() {

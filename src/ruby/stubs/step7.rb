@@ -9,58 +9,51 @@
 #
 # ---- Bytecode for: def add(a, b); a + b; end; add(2, 3) ----
 #
-#   0: Definemethod(:add, <method_iseq>)   # define and push :add
-#   1: Pop                                 # discard :add symbol
-#   2: Putself                             # receiver for add(2,3)
-#   3: Putobject(2)
-#   4: Putobject(3)
-#   5: OptSendWithoutBlock({mid: :add, argc: 2})
-#   6: Leave
+#   0: putself
+#   1: putobject 2
+#   3: putobject 3
+#   5: opt_send_without_block {mid: :add, argc: 2}
+#   7: leave
 #
 # Method iseq for add(a, b):
-#   0: Getlocal(0)   # a
-#   1: Getlocal(1)   # b
-#   2: OptPlus
-#   3: Leave
+#   0: getlocal 1   # a (reversed index)
+#   2: getlocal 0   # b (reversed index)
+#   4: opt_plus
+#   5: leave
 #
 # ============================================================
 
 # ---- VM: Definemethod ----
 #
-# Register @method_iseq under @method_name on the current object's class.
-# Then push @method_name onto the stack (Ruby convention: def returns method name).
+# Register method_iseq under method_name on the current object's class.
 #
-# vm.define_method(mid, iseq)  registers the method
-# vm.push(value)               pushes a value
+# vm.define_method(mid, iseq) registers the method.
 #
-class YRuby::Instructions::Definemethod < YRuby::Instructions::Base
-  def call(vm)
-    # TODO:
-    # vm.define_method(@method_name, @method_iseq)
-    # vm.push(@method_name)
-    raise NotImplementedError, "Definemethod#call not implemented"
+class YRuby::Insns::Definemethod
+  def self.call(vm, mid, iseq)
+    # TODO: vm.define_method(mid, iseq)
+    raise NotImplementedError, "Definemethod.call not implemented"
   end
 end
 
 # ---- VM: OptSendWithoutBlock ----
 #
-# Dispatch a method call. @cd is a YRuby::CallData struct containing:
-#   @cd.ci.mid   — method name (symbol)
-#   @cd.ci.argc  — argument count
+# Dispatch a method call. cd is a YRuby::CallData struct containing:
+#   cd.mid   — method name (symbol)
+#   cd.argc  — argument count
 #
-# vm.sendish(@cd) handles everything:
-#   - pops argc arguments and the receiver from the stack
+# vm.sendish(cd) handles everything:
 #   - looks up the method on the receiver's class
-#   - invokes it and returns the result
+#   - sets up a new frame with arguments
+#   - execution continues in the method body
 #
-# After sendish returns, push the result onto the stack.
+# Note: sendish does NOT return a value. The method's Leave instruction
+# pushes the return value onto the caller's stack automatically.
 #
-class YRuby::Instructions::OptSendWithoutBlock < YRuby::Instructions::Base
-  def call(vm)
-    # TODO:
-    # result = vm.sendish(@cd)
-    # vm.push(result)
-    raise NotImplementedError, "OptSendWithoutBlock#call not implemented"
+class YRuby::Insns::OptSendWithoutBlock
+  def self.call(vm, cd)
+    # TODO: vm.sendish(cd)
+    raise NotImplementedError, "OptSendWithoutBlock.call not implemented"
   end
 end
 
@@ -68,44 +61,41 @@ end
 #
 # A DefNode represents: def method_name(params); body; end
 #
-# Use compile_method(node) to compile the body into a new Iseq,
+# Use YRuby::Iseq.iseq_new_method(node) to compile the body into a new Iseq,
 # then emit Definemethod with the name and method iseq.
+# Also emit Putobject with the method name (Ruby convention: def returns name).
 #
-# compile_method is provided by the system (in compiler_system.rb).
-#
-class YRuby::Compiler
-  def compile_def_node(node, iseq)
+class YRuby::Compile
+  def compile_def_node(iseq, node)
     # TODO:
-    # method_iseq = compile_method(node)
-    # iseq.emit(YRuby::Instructions::Definemethod.new(node.name, method_iseq))
+    # method_iseq = YRuby::Iseq.iseq_new_method(node)
+    # iseq.emit(YRuby::Insns::Definemethod, node.name, method_iseq)
+    # iseq.emit(YRuby::Insns::Putobject, node.name)
     raise NotImplementedError, "compile_def_node not implemented"
   end
 
   # ---- Compiler: compile_general_call ----
   #
-  # A general method call: receiver.method(args) or method(args)
+  # A general method call: method(args)
+  # (receiverless — node.receiver is nil)
   #
-  # If node.receiver is nil, the call is on self (e.g., fib(n-1)).
-  #   Emit Putself as the receiver.
-  # Otherwise, compile node.receiver.
-  #
-  # Then compile each argument.
-  # Finally, emit OptSendWithoutBlock with a CallData struct.
+  # Emit Putself as the receiver (implicit self),
+  # compile each argument, then emit OptSendWithoutBlock
+  # with a CallData struct.
   #
   # CallData construction:
-  #   cd = YRuby::CallData.new(ci: YRuby::CallInfo.new(mid: node.name, argc: args.size))
+  #   cd = YRuby::CallData.new(mid: node.name, argc: args_count)
   #
-  def compile_general_call(node, iseq)
+  def compile_general_call(iseq, node)
     # TODO:
-    # if node.receiver.nil?
-    #   iseq.emit(YRuby::Instructions::Putself.new)
-    # else
-    #   compile_node(node.receiver, iseq)
+    # iseq.emit(YRuby::Insns::Putself)
+    # argc = 0
+    # if node.arguments
+    #   compile_node(iseq, node.arguments)
+    #   argc = node.arguments.arguments.size
     # end
-    # args = node.arguments&.arguments || []
-    # args.each { |arg| compile_node(arg, iseq) }
-    # cd = YRuby::CallData.new(ci: YRuby::CallInfo.new(mid: node.name, argc: args.size))
-    # iseq.emit(YRuby::Instructions::OptSendWithoutBlock.new(cd))
+    # cd = YRuby::CallData.new(mid: node.name, argc:)
+    # iseq.emit(YRuby::Insns::OptSendWithoutBlock, cd)
     raise NotImplementedError, "compile_general_call not implemented"
   end
 end
