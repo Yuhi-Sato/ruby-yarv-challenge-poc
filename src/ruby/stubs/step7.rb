@@ -31,7 +31,7 @@
 #
 class YRuby::Insns::Definemethod
   def self.call(vm, mid, iseq)
-    # TODO: vm.define_method(mid, iseq)
+    # TODO: Register the method
     raise NotImplementedError, "Definemethod.call not implemented"
   end
 end
@@ -52,7 +52,7 @@ end
 #
 class YRuby::Insns::OptSendWithoutBlock
   def self.call(vm, cd)
-    # TODO: vm.sendish(cd)
+    # TODO: Dispatch the method call
     raise NotImplementedError, "OptSendWithoutBlock.call not implemented"
   end
 end
@@ -67,10 +67,7 @@ end
 #
 module Patch
   def compile_def_node(iseq, node)
-    # TODO:
-    # method_iseq = YRuby::Iseq.iseq_new_method(node)
-    # iseq.emit(YRuby::Insns::Definemethod, node.name, method_iseq)
-    # iseq.emit(YRuby::Insns::Putobject, node.name)
+    # TODO: Create method iseq, emit Definemethod, emit return value
     raise NotImplementedError, "compile_def_node not implemented"
   end
 
@@ -87,15 +84,7 @@ module Patch
   #   cd = YRuby::CallData.new(mid: node.name, argc: args_count)
   #
   def compile_general_call(iseq, node)
-    # TODO:
-    # iseq.emit(YRuby::Insns::Putself)
-    # argc = 0
-    # if node.arguments
-    #   compile_node(iseq, node.arguments)
-    #   argc = node.arguments.arguments.size
-    # end
-    # cd = YRuby::CallData.new(mid: node.name, argc:)
-    # iseq.emit(YRuby::Insns::OptSendWithoutBlock, cd)
+    # TODO: Emit Putself, compile arguments, emit OptSendWithoutBlock with CallData
     raise NotImplementedError, "compile_general_call not implemented"
   end
 end

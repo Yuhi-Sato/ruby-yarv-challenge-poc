@@ -19,11 +19,6 @@
 class YRuby::Insns::OptLt
   def self.call(vm)
     # TODO: Read both operands, pop them, push (a < b)
-    # recv = vm.topn(2)
-    # arg = vm.topn(1)
-    # vm.pop
-    # vm.pop
-    # vm.push(recv < arg)
     raise NotImplementedError, "OptLt.call not implemented"
   end
 end
@@ -34,7 +29,7 @@ end
 #
 module Patch
   def compile_binary_lt(iseq, node)
-    # TODO: iseq.emit(YRuby::Insns::OptLt)
+    # TODO: Emit OptLt
     raise NotImplementedError, "compile_binary_lt not implemented"
   end
 end

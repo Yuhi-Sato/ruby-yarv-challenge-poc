@@ -36,9 +36,6 @@
 class YRuby::Insns::Branchunless
   def self.call(vm, dst)
     # TODO: Pop condition, jump if falsy
-    # val = vm.topn(1)
-    # vm.pop
-    # vm.add_pc(dst) unless val
     raise NotImplementedError, "Branchunless.call not implemented"
   end
 end
@@ -49,7 +46,7 @@ end
 #
 class YRuby::Insns::Jump
   def self.call(vm, dst)
-    # TODO: vm.add_pc(dst)
+    # TODO: Unconditionally adjust PC
     raise NotImplementedError, "Jump.call not implemented"
   end
 end

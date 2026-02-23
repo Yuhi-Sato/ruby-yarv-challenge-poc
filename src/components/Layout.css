@@ -2,7 +2,8 @@
   display: grid;
   grid-template-columns: 30% 40% 30%;
   gap: 1rem;
-  height: calc(100vh - 140px);
+  flex: 1;
+  min-height: 0;
   padding: 1rem;
   background: #f5f0f0;
 }

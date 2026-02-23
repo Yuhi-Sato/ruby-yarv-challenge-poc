@@ -21,11 +21,6 @@
 class YRuby::Insns::OptMinus
   def self.call(vm)
     # TODO: Read both operands, pop them, push a - b
-    # recv = vm.topn(2)
-    # arg = vm.topn(1)
-    # vm.pop
-    # vm.pop
-    # vm.push(recv - arg)
     raise NotImplementedError, "OptMinus.call not implemented"
   end
 end
@@ -37,7 +32,7 @@ end
 #
 module Patch
   def compile_binary_minus(iseq, node)
-    # TODO: iseq.emit(YRuby::Insns::OptMinus)
+    # TODO: Emit OptMinus
     raise NotImplementedError, "compile_binary_minus not implemented"
   end
 end

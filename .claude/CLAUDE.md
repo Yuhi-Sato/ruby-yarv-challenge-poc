@@ -169,7 +169,20 @@ vm.define_method(m, iseq)   # Register method on class
 vm.sendish(cd)          # Dispatch method call
 ```
 
-### 5. Branch Instructions — Relative Offsets (IMPORTANT)
+### 5. Iseq User-Facing API (Compiler Methods)
+
+```ruby
+# --- Instance Methods (コンパイラメソッド内で使用) ---
+iseq.emit(InsnClass, *operands)           # 命令を追加 (例: iseq.emit(YRuby::Insns::Putobject, 42))
+iseq.emit_placeholder(InsnClass::LEN)     # 前方参照用のプレースホルダーを予約 (Step 6)
+iseq.patch_at!(pc, InsnClass, offset)     # プレースホルダーを実際の命令で上書き (Step 6)
+iseq.size                                 # 現在のiseqのサイズ (ジャンプオフセット計算用)
+
+# --- Class Methods ---
+YRuby::Iseq.iseq_new_method(node)         # DefNodeからメソッド用iseqを生成 (Step 7)
+```
+
+### 6. Branch Instructions — Relative Offsets (IMPORTANT)
 
 PC advances by instruction LEN **BEFORE** execution. Branch instructions use **relative offsets**, not absolute positions:
 
@@ -206,7 +219,7 @@ The compiler uses `emit_placeholder` / `patch_at!` for forward-reference patchin
 # iseq.patch_at!(branchunless_pc, Branchunless, offset)
 ```
 
-### 6. Code Merging Strategy (Accumulation Model)
+### 7. Code Merging Strategy (Accumulation Model)
 
 Each time "Run Tests" is clicked for step N, ruby.wasm receives:
 

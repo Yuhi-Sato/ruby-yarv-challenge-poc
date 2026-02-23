@@ -24,11 +24,6 @@
 class YRuby::Insns::OptPlus
   def self.call(vm)
     # TODO: Read both operands, pop them, push the sum
-    # recv = vm.topn(2)
-    # arg = vm.topn(1)
-    # vm.pop
-    # vm.pop
-    # vm.push(recv + arg)
     raise NotImplementedError, "OptPlus.call not implemented"
   end
 end
@@ -44,7 +39,6 @@ end
 module Patch
   def compile_binary_plus(iseq, node)
     # TODO: Emit OptPlus instruction
-    # iseq.emit(YRuby::Insns::OptPlus)
     raise NotImplementedError, "compile_binary_plus not implemented"
   end
 end

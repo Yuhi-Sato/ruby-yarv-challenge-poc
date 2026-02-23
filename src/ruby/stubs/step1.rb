@@ -18,7 +18,6 @@
 class YRuby::Insns::Putobject
   def self.call(vm, value)
     # TODO: Push value onto the stack
-    # vm.push(value)
     raise NotImplementedError, "Putobject.call not implemented"
   end
 end
@@ -33,7 +32,6 @@ end
 module Patch
   def compile_integer_node(iseq, node)
     # TODO: Emit a Putobject instruction with the integer value
-    # iseq.emit(YRuby::Insns::Putobject, node.value)
     raise NotImplementedError, "compile_integer_node not implemented"
   end
 end
