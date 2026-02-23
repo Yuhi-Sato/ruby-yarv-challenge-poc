@@ -29,6 +29,14 @@ export const STEPS: StepConfig[] = [
         h('li', null, h('code', null, 'Prism::IntegerNode'), ' represents a literal integer (e.g. ', h('code', null, '42'), ')'),
         h('li', null, h('code', null, 'node.value'), ' holds the integer — emit ', h('code', null, 'iseq.emit(Putobject, node.value)')),
       ),
+      h('h3', null, 'API Reference'),
+      h('pre', null, h('code', null,
+        '# VM\n' +
+        'vm.push(x)                       # Push x onto the stack\n' +
+        '\n' +
+        '# Iseq\n' +
+        'iseq.emit(InsnClass, *operands)  # Append instruction to iseq'
+      )),
     ),
     instructions: 'putobject · compile_integer_node',
     stub: step1Stub,
@@ -49,8 +57,8 @@ export const STEPS: StepConfig[] = [
       h('ul', null,
         h('li', null, h('code', null, 'opt_plus'), ' pops two values and pushes their sum'),
         h('li', null,
-          'Stack peek: ', h('code', null, 'vm.topn(2)'), ' = left (a), ',
-          h('code', null, 'vm.topn(1)'), ' = right (b)'
+          'Stack is LIFO: ', h('code', null, 'vm.topn(2)'), ' = left operand (a), ',
+          h('code', null, 'vm.topn(1)'), ' = right operand (b)'
         ),
         h('li', null, 'Pop both, then push ', h('code', null, 'a + b')),
       ),
@@ -59,6 +67,16 @@ export const STEPS: StepConfig[] = [
         h('li', null, 'The operands are already compiled by ', h('code', null, 'compile_call_node_dispatch')),
         h('li', null, 'You only need to emit ', h('code', null, 'iseq.emit(YRuby::Insns::OptPlus)')),
       ),
+      h('h3', null, 'API Reference'),
+      h('pre', null, h('code', null,
+        '# VM\n' +
+        'vm.topn(n)                       # Peek nth from top (1 = top, 2 = second)\n' +
+        'vm.pop                           # Pop and return top value\n' +
+        'vm.push(x)                       # Push x onto the stack\n' +
+        '\n' +
+        '# Iseq\n' +
+        'iseq.emit(InsnClass, *operands)  # Append instruction to iseq'
+      )),
     ),
     instructions: 'opt_plus · compile_binary_plus',
     stub: step2Stub,
@@ -84,6 +102,16 @@ export const STEPS: StepConfig[] = [
       h('ul', null,
         h('li', null, 'Same pattern as ', h('code', null, 'compile_binary_plus'), ', but emit ', h('code', null, 'OptMinus')),
       ),
+      h('h3', null, 'API Reference'),
+      h('pre', null, h('code', null,
+        '# VM\n' +
+        'vm.topn(n)                       # Peek nth from top (1 = top, 2 = second)\n' +
+        'vm.pop                           # Pop and return top value\n' +
+        'vm.push(x)                       # Push x onto the stack\n' +
+        '\n' +
+        '# Iseq\n' +
+        'iseq.emit(InsnClass, *operands)  # Append instruction to iseq'
+      )),
     ),
     instructions: 'opt_minus · compile_binary_minus',
     stub: step3Stub,
@@ -104,7 +132,7 @@ export const STEPS: StepConfig[] = [
       h('p', null,
         'Locals live in the stack, addressed via the ',
         h('strong', null, 'EP (Environment Pointer)'),
-        ':'
+        '. Each frame reserves slots at a negative offset from EP:'
       ),
       h('ul', null,
         h('li', null, h('code', null, 'env_read(-idx)'), ' → read local at index idx'),
@@ -120,7 +148,22 @@ export const STEPS: StepConfig[] = [
       h('ul', null,
         h('li', null, 'Look up index: ', h('code', null, '@index_lookup_table[node.name]')),
         h('li', null, 'For write: compile value, emit ', h('code', null, 'Dup'), ', then ', h('code', null, 'Setlocal')),
+        h('li', null, 'The ', h('code', null, 'Dup'), ' keeps the assignment expression\'s value on the stack (Ruby convention: ', h('code', null, 'x = 5'), ' evaluates to ', h('code', null, '5'), ')'),
       ),
+      h('h3', null, 'API Reference'),
+      h('pre', null, h('code', null,
+        '# VM\n' +
+        'vm.push(x)                       # Push x onto the stack\n' +
+        'vm.pop                           # Pop and return top value\n' +
+        'vm.env_read(-idx)                # Read local at index idx\n' +
+        'vm.env_write(-idx, val)          # Write local at index idx\n' +
+        '\n' +
+        '# Iseq\n' +
+        'iseq.emit(InsnClass, *operands)  # Append instruction to iseq\n' +
+        '\n' +
+        '# Compiler internal\n' +
+        '@index_lookup_table[node.name]   # Variable name (Symbol) → slot index (Integer)'
+      )),
     ),
     instructions: 'getlocal · setlocal · compile_local_var_read · compile_local_var_write',
     stub: step4Stub,
@@ -139,15 +182,26 @@ export const STEPS: StepConfig[] = [
       h('h3', null, 'VM: OptLt'),
       h('ul', null,
         h('li', null, h('code', null, 'opt_lt'), ': peek a = ', h('code', null, 'topn(2)'), ', b = ', h('code', null, 'topn(1)'), ', push ', h('code', null, 'a < b')),
-        h('li', null, 'Same pattern as ', h('code', null, 'opt_plus'), ' / ', h('code', null, 'opt_minus')),
+        h('li', null, 'Same pop-two-push-one pattern as ', h('code', null, 'opt_plus'), ' / ', h('code', null, 'opt_minus')),
+        h('li', null, 'Result is a Ruby boolean: ', h('code', null, 'true'), ' or ', h('code', null, 'false')),
       ),
       h('h3', null, 'Compiler: compile_binary_lt'),
       h('ul', null,
         h('li', null, 'Same pattern as compile_binary_plus, but emit ', h('code', null, 'OptLt')),
       ),
       h('p', null,
-        'The result (', h('code', null, 'true'), ' or ', h('code', null, 'false'), ') will be consumed by branch instructions in Step 6.'
+        'The boolean result will be consumed by the branch instructions in Step 6.'
       ),
+      h('h3', null, 'API Reference'),
+      h('pre', null, h('code', null,
+        '# VM\n' +
+        'vm.topn(n)                       # Peek nth from top (1 = top, 2 = second)\n' +
+        'vm.pop                           # Pop and return top value\n' +
+        'vm.push(x)                       # Push x onto the stack\n' +
+        '\n' +
+        '# Iseq\n' +
+        'iseq.emit(InsnClass, *operands)  # Append instruction to iseq'
+      )),
     ),
     instructions: 'opt_lt · compile_binary_lt',
     stub: step5Stub,
@@ -164,14 +218,18 @@ export const STEPS: StepConfig[] = [
     title: 'Step 6: Control Flow',
     description: h('div', null,
       h('h2', null, 'Step 6: Conditional Branching'),
-      h('h3', null, 'Key Insight: PC and offsets'),
+      h('h3', null, 'Key Insight: PC and Relative Offsets'),
       h('p', null,
         'The VM advances PC by instruction length ', h('strong', null, 'before'), ' executing:'
       ),
-      h('pre', null, h('code', null, 'insn = iseq.fetch(pc)\npc += insn::LEN    ← advanced first\ninsn.call(vm, ...)  ← then executed')),
+      h('pre', null, h('code', null,
+        'insn = iseq.fetch(pc)\n' +
+        'pc += insn::LEN    # ← advanced first\n' +
+        'insn.call(vm, ...) # ← then executed'
+      )),
       h('p', null,
         'Branch instructions use ', h('strong', null, 'relative offsets'), ': ',
-        h('code', null, 'vm.add_pc(dst)'), ' adjusts PC by dst from the current position.'
+        h('code', null, 'vm.add_pc(dst)'), ' adjusts PC by dst from the current (already-advanced) position.'
       ),
       h('h3', null, 'VM: Branchunless'),
       h('ul', null,
@@ -182,10 +240,52 @@ export const STEPS: StepConfig[] = [
         h('li', null, 'Unconditionally ', h('code', null, 'vm.add_pc(dst)'))
       ),
       h('h3', null, 'Compiler: compile_conditional_node'),
-      h('ul', null,
-        h('li', null, 'Use ', h('strong', null, 'forward-reference patching'), ' with ', h('code', null, 'emit_placeholder'), ' / ', h('code', null, 'patch_at!')),
-        h('li', null, 'Compute offset: ', h('code', null, 'target_pc - (instruction_pc + LEN)')),
+      h('p', null,
+        'Because jump targets aren\'t known until after compiling branches, use ',
+        h('strong', null, 'forward-reference patching'), ':'
       ),
+      h('pre', null, h('code', null,
+        '# node fields: node.predicate, node.statements, node.consequent\n' +
+        '\n' +
+        '# 1. Compile the condition\n' +
+        'compile_node(iseq, node.predicate)\n' +
+        '\n' +
+        '# 2. Reserve a slot for branchunless (target unknown yet)\n' +
+        'branchunless_pc = iseq.size\n' +
+        'iseq.emit_placeholder(YRuby::Insns::Branchunless::LEN)\n' +
+        '\n' +
+        '# 3. Compile then-branch\n' +
+        'compile_node(iseq, node.statements)\n' +
+        '\n' +
+        '# 4. Reserve a slot for the jump over else\n' +
+        'then_end_pc = iseq.size\n' +
+        'iseq.emit_placeholder(YRuby::Insns::Jump::LEN)\n' +
+        '\n' +
+        '# 5. Patch branchunless to skip to else\n' +
+        'else_label = iseq.size\n' +
+        'iseq.patch_at!(branchunless_pc, YRuby::Insns::Branchunless,\n' +
+        '  else_label - (branchunless_pc + YRuby::Insns::Branchunless::LEN))\n' +
+        '\n' +
+        '# 6. Compile else-branch (node.consequent may be ElseNode or IfNode)\n' +
+        '\n' +
+        '# 7. Patch jump to skip to end\n' +
+        'end_label = iseq.size\n' +
+        'iseq.patch_at!(then_end_pc, YRuby::Insns::Jump,\n' +
+        '  end_label - (then_end_pc + YRuby::Insns::Jump::LEN))'
+      )),
+      h('h3', null, 'API Reference'),
+      h('pre', null, h('code', null,
+        '# VM\n' +
+        'vm.topn(1)                              # Peek top value (do not pop)\n' +
+        'vm.pop                                  # Pop and return top value\n' +
+        'vm.add_pc(n)                            # Adjust PC by relative offset n\n' +
+        '\n' +
+        '# Iseq\n' +
+        'iseq.size                               # Current instruction count\n' +
+        'iseq.emit(InsnClass, *operands)         # Append instruction\n' +
+        'iseq.emit_placeholder(LEN)              # Reserve LEN slots\n' +
+        'iseq.patch_at!(pc, InsnClass, offset)   # Fill in placeholder'
+      )),
     ),
     instructions: 'branchunless · jump · compile_conditional_node',
     stub: step6Stub,
@@ -210,21 +310,51 @@ export const STEPS: StepConfig[] = [
       h('ul', null,
         h('li', null, h('code', null, 'vm.sendish(cd)'), ' dispatches the method call'),
         h('li', null, 'Sets up a new frame with receiver + arguments'),
-        h('li', null, 'The method\'s Leave instruction pushes the return value'),
+        h('li', null, 'The method\'s Leave instruction pushes the return value onto the caller\'s stack'),
       ),
       h('h3', null, 'Compiler: compile_def_node'),
       h('ul', null,
-        h('li', null, h('code', null, 'YRuby::Iseq.iseq_new_method(node)'), ' compiles the body'),
-        h('li', null, 'Emit ', h('code', null, 'Definemethod'), ' + ', h('code', null, 'Putobject(name)')),
+        h('li', null, h('code', null, 'YRuby::Iseq.iseq_new_method(node)'), ' compiles the method body into a new Iseq'),
+        h('li', null, 'Emit ', h('code', null, 'Definemethod'), ' + ', h('code', null, 'Putobject(name)'), ' (Ruby convention: ', h('code', null, 'def'), ' returns the method name)'),
       ),
       h('h3', null, 'Compiler: compile_general_call'),
       h('ul', null,
-        h('li', null, 'Emit ', h('code', null, 'Putself'), ' (implicit receiver for receiverless calls)'),
-        h('li', null, 'Compile arguments, build ', h('code', null, 'CallData'), ', emit ', h('code', null, 'OptSendWithoutBlock')),
+        h('li', null, 'Emit ', h('code', null, 'Putself'), ' as the implicit receiver for receiverless calls'),
+        h('li', null, 'Compile each argument, then emit ', h('code', null, 'OptSendWithoutBlock'), ' with a CallData'),
       ),
+      h('h3', null, 'Example bytecode: def add(a, b); a + b; end; add(2, 3)'),
+      h('pre', null, h('code', null,
+        '# Main iseq\n' +
+        '0: putself\n' +
+        '1: putobject 2\n' +
+        '3: putobject 3\n' +
+        '5: opt_send_without_block {mid: :add, argc: 2}\n' +
+        '7: leave\n' +
+        '\n' +
+        '# Method iseq for add(a, b)\n' +
+        '0: getlocal 1   # a  (params are indexed in reverse)\n' +
+        '2: getlocal 0   # b\n' +
+        '4: opt_plus\n' +
+        '5: leave'
+      )),
       h('h3', null, 'Final Goal: fib(10) = 55'),
       h('pre', null, h('code', null,
         'def fib(n)\n  if n < 2\n    n\n  else\n    fib(n - 1) + fib(n - 2)\n  end\nend\nfib(10)  # => 55'
+      )),
+      h('h3', null, 'API Reference'),
+      h('pre', null, h('code', null,
+        '# VM\n' +
+        'vm.define_method(mid, iseq)              # Register method on current class\n' +
+        'vm.sendish(cd)                           # Dispatch method call (CallData)\n' +
+        '\n' +
+        '# Iseq (instance)\n' +
+        'iseq.emit(InsnClass, *operands)          # Append instruction\n' +
+        '\n' +
+        '# Iseq (class method)\n' +
+        'YRuby::Iseq.iseq_new_method(node)       # Compile def body → new Iseq\n' +
+        '\n' +
+        '# CallData\n' +
+        'YRuby::CallData.new(mid: name, argc: n)  # Call descriptor'
       )),
     ),
     instructions: 'definemethod · opt_send_without_block · compile_def_node · compile_general_call',
