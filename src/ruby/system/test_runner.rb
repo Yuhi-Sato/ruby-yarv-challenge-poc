@@ -17,7 +17,7 @@ class ChallengeTestRunner
         passed: passed,
         error: nil
       }
-    rescue => e
+    rescue Exception => e
       @results << {
         description: description,
         source: source,
