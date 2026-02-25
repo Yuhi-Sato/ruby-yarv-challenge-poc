@@ -32,11 +32,7 @@ export function useRubyVM() {
         // Prism is built into Ruby 4.0 — require it upfront
         vm.eval(`require 'prism'`)
 
-        // The gem directory is packed into the WASM VFS at WASM_GEM_PATH (see build/build-wasm.sh).
-        // We register that path via Gem.paths so the standard gem system can find yruby
-        // without any manual $LOAD_PATH manipulation.
-        const gemPath = '/usr/local/bundle'
-        vm.eval(`Gem.paths = Gem::PathSupport.new('GEM_PATH' => '${gemPath}')`)
+        vm.eval(`$LOAD_PATH.unshift('/usr/local/lib/ruby/yruby')`)
         vm.eval(`require 'yruby'`)
 
         vmRef.current = vm
