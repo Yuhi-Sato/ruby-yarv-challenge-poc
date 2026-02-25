@@ -16,6 +16,7 @@ export interface StepConfig {
   instructions: string // Instructions introduced in this step
   stub: string // Combined VM + compiler stub (participant-editable)
   testCases: TestCase[]
+  hints?: string[] // Progressive hints (vague → specific)
   bytecodePreview?: string // Expected bytecode for tutorial pane
 }
 

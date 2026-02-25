@@ -9,17 +9,32 @@ interface ResultPaneProps {
 }
 
 function prettifyError(msg: string): string {
-  // Detect NotImplementedError — tell user what to implement
-  const niMatch = msg.match(/(\w+(?:\.\w+)?)\s+not implemented/)
-  if (niMatch) {
-    return `${niMatch[1]} is not implemented yet.\nImplement it in the editor, then click Run Tests.`
+  // Detect NotImplementedError — tell user exactly which method to implement
+  const niMatch = msg.match(/(\w+(?:[.#]\w+)?)\s+not implemented/)
+  if (niMatch || msg.includes('NotImplementedError')) {
+    const name = niMatch ? niMatch[1] : null
+    if (name) {
+      return `🔧 ${name} is not yet implemented.\n\nWrite your implementation in the editor and click Run Tests.`
+    }
+    return `🔧 A required method is not yet implemented.\n\nWrite your implementation in the editor and click Run Tests.`
   }
-  // Strip internal eval stack frames to reduce noise
-  return msg
+
+  // Detect SyntaxError — show only the relevant line
+  const syntaxMatch = msg.match(/SyntaxError[^:]*:\s*(.+?)(?:\n|$)/)
+  if (syntaxMatch) {
+    return `Syntax error: ${syntaxMatch[1]}`
+  }
+
+  // For all other errors: strip internal eval stack frames and cap at 8 lines
+  const cleaned = msg
     .split('\n')
-    .filter(l => !l.match(/^\s+eval:\d+:in/))
+    .filter(l => !l.match(/^\s+(from\s+)?\(eval\):\d+/) && !l.match(/^\s+eval:\d+:in/))
+    .slice(0, 8)
     .join('\n')
     .trim()
+
+  // Highlight the core error message (first non-empty line)
+  return cleaned
 }
 
 export function ResultPane({ result, expectedBytecode, onNextStep, isLastStep }: ResultPaneProps) {
