@@ -32,6 +32,10 @@ export const STEPS: StepConfig[] = [
     ),
     instructions: 'putobject · compile_integer_node',
     stub: step1Stub,
+    hints: [
+      'vm.push(x) places a value on top of the stack. iseq.emit(InsnClass, *operands) appends an instruction to the instruction sequence.',
+      'Putobject: vm.push(value) — Compiler: iseq.emit(YRuby::Insns::Putobject, node.value)',
+    ],
     testCases: [
       { description: '42 → 42', source: '42', expected: 42 },
       { description: '100 → 100', source: '100', expected: 100 },
@@ -62,6 +66,10 @@ export const STEPS: StepConfig[] = [
     ),
     instructions: 'opt_plus · compile_binary_plus',
     stub: step2Stub,
+    hints: [
+      'For "1 + 2", the stack before opt_plus is [1, 2]. topn(2) = 1 (left), topn(1) = 2 (right). Pop both, push their sum.',
+      'OptPlus: b = vm.pop; a = vm.pop; vm.push(a + b) — Compiler: iseq.emit(YRuby::Insns::OptPlus)',
+    ],
     testCases: [
       { description: '1 + 2 = 3', source: '1 + 2', expected: 3 },
       { description: '10 + 5 = 15', source: '10 + 5', expected: 15 },
@@ -87,6 +95,10 @@ export const STEPS: StepConfig[] = [
     ),
     instructions: 'opt_minus · compile_binary_minus',
     stub: step3Stub,
+    hints: [
+      'Same stack pattern as Step 2, but compute a - b. topn(2) is the left operand. Order matters!',
+      'OptMinus: b = vm.pop; a = vm.pop; vm.push(a - b) — Compiler: iseq.emit(YRuby::Insns::OptMinus)',
+    ],
     testCases: [
       { description: '10 - 3 = 7', source: '10 - 3', expected: 7 },
       { description: '5 - 5 = 0', source: '5 - 5', expected: 0 },
@@ -124,6 +136,10 @@ export const STEPS: StepConfig[] = [
     ),
     instructions: 'getlocal · setlocal · compile_local_var_read · compile_local_var_write',
     stub: step4Stub,
+    hints: [
+      'Getlocal pushes env_read(-idx) onto the stack. Setlocal pops and stores with env_write(-idx, val). In the compiler, @index_lookup_table[node.name] gives the variable index.',
+      'Getlocal: vm.push(vm.env_read(-idx)) — Setlocal: vm.env_write(-idx, vm.pop) — compile_local_var_write: compile node.value, then emit Dup, then emit Setlocal with the index',
+    ],
     testCases: [
       { description: 'x = 5; x → 5', source: 'x = 5; x', expected: 5 },
       { description: 'a = 10; b = 20; a + b → 30', source: 'a = 10; b = 20; a + b', expected: 30 },
@@ -151,6 +167,10 @@ export const STEPS: StepConfig[] = [
     ),
     instructions: 'opt_lt · compile_binary_lt',
     stub: step5Stub,
+    hints: [
+      'Same stack pattern as opt_plus / opt_minus, but push the boolean result of a < b.',
+      'OptLt: b = vm.pop; a = vm.pop; vm.push(a < b) — Compiler: iseq.emit(YRuby::Insns::OptLt)',
+    ],
     testCases: [
       { description: '3 < 5 → true', source: '3 < 5', expected: true },
       { description: '10 < 5 → false', source: '10 < 5', expected: false },
@@ -191,6 +211,10 @@ export const STEPS: StepConfig[] = [
     ),
     instructions: 'branchunless · jump · compile_conditional_node',
     stub: step6Stub,
+    hints: [
+      'Branchunless: pop the condition (topn(1) then pop), call vm.add_pc(dst) only if the value was falsy. Jump: always call vm.add_pc(dst). The full compiler algorithm is shown in the tutorial panel.',
+      'Branchunless: val = vm.pop; vm.add_pc(dst) unless val — Jump: vm.add_pc(dst) — Compiler: follow the 7-step patching algorithm in the tutorial exactly',
+    ],
     testCases: [
       { description: 'true branch', source: 'if 3 < 5; 10; else; 20; end', expected: 10 },
       { description: 'false branch', source: 'if 10 < 5; 10; else; 20; end', expected: 20 },
@@ -231,6 +255,10 @@ export const STEPS: StepConfig[] = [
     ),
     instructions: 'definemethod · opt_send_without_block · compile_def_node · compile_general_call',
     stub: step7Stub,
+    hints: [
+      'Definemethod: vm.define_method(mid, iseq) — OptSendWithoutBlock: vm.sendish(cd) — compile_def_node: create a method iseq with YRuby::Iseq.iseq_new_method(node), then emit Definemethod and Putobject(node.name).',
+      'compile_general_call: emit Putself, compile each argument with compile_node, then emit OptSendWithoutBlock with YRuby::CallData.new(mid: node.name, argc: node.arguments.arguments.length)',
+    ],
     testCases: [
       {
         description: 'identity(42) → 42',

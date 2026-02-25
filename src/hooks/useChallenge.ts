@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { ChallengeState, RunResult, TestResult } from '../types'
 import { STEPS } from '../steps'
 
@@ -7,18 +7,43 @@ import challengePatchRb from '../ruby/system/challenge_patch.rb?raw'
 import challengeResetRb from '../ruby/system/challenge_reset.rb?raw'
 import testRunnerRb from '../ruby/system/test_runner.rb?raw'
 
+const STORAGE_KEY = 'ruby-yarv-challenge-v1'
+
+function loadSavedState(): { currentStep?: number; userCode?: Record<number, string>; completedSteps?: number[] } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw)
+  } catch {
+    return {}
+  }
+}
+
 interface UseChallengeOptions {
   vmRef: React.RefObject<any>
 }
 
 export function useChallenge({ vmRef }: UseChallengeOptions) {
-  const [state, setState] = useState<ChallengeState>({
-    currentStep: 1,
-    userCode: { 1: STEPS[0].stub },
-    completedSteps: [],
-    lastResult: null,
-    isRunning: false,
+  const [state, setState] = useState<ChallengeState>(() => {
+    const saved = loadSavedState()
+    return {
+      currentStep: saved.currentStep ?? 1,
+      userCode: saved.userCode ?? { 1: STEPS[0].stub },
+      completedSteps: saved.completedSteps ?? [],
+      lastResult: null,
+      isRunning: false,
+    }
   })
+
+  // Persist progress to localStorage whenever it changes
+  const { currentStep, userCode, completedSteps } = state
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ currentStep, userCode, completedSteps }))
+    } catch {
+      // Ignore storage errors (private mode, quota exceeded, etc.)
+    }
+  }, [currentStep, userCode, completedSteps])
 
   const goToStep = useCallback((stepId: number) => {
     const step = STEPS.find(s => s.id === stepId)

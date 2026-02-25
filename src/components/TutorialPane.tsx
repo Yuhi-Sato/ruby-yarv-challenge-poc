@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { StepConfig, RunResult } from '../types'
 import './TutorialPane.css'
 
@@ -21,7 +21,15 @@ const VM_API = [
 
 export function TutorialPane({ step, result }: TutorialPaneProps) {
   const [showBytecode, setShowBytecode] = useState(false)
-  const [showApi, setShowApi] = useState(false)
+  const [showApi, setShowApi] = useState(true)
+  const [hintsShown, setHintsShown] = useState(0)
+
+  // Reset hint state when navigating to a different step
+  useEffect(() => {
+    setHintsShown(0)
+  }, [step.id])
+
+  const hints = step.hints ?? []
 
   return (
     <div className="tutorial-pane">
@@ -41,6 +49,29 @@ export function TutorialPane({ step, result }: TutorialPaneProps) {
           ))}
         </div>
       </div>
+
+      {hints.length > 0 && (
+        <div className="section">
+          {hintsShown > 0 && (
+            <div className="hints-revealed">
+              {hints.slice(0, hintsShown).map((hint, i) => (
+                <div key={i} className="hint-item">
+                  <span className="hint-label">Hint {i + 1}</span>
+                  <span className="hint-text">{hint}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {hintsShown < hints.length && (
+            <button
+              className="hint-btn"
+              onClick={() => setHintsShown(n => n + 1)}
+            >
+              💡 {hintsShown === 0 ? 'Show Hint' : `Show Hint ${hintsShown + 1}`}
+            </button>
+          )}
+        </div>
+      )}
 
       {step.bytecodePreview && (
         <div className="section">
