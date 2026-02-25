@@ -182,10 +182,12 @@ export const STEPS: StepConfig[] = [
         h('li', null, 'Unconditionally ', h('code', null, 'vm.add_pc(dst)'))
       ),
       h('h3', null, 'Compiler: compile_conditional_node'),
-      h('ul', null,
-        h('li', null, 'Use ', h('strong', null, 'forward-reference patching'), ' with ', h('code', null, 'emit_placeholder'), ' / ', h('code', null, 'patch_at!')),
-        h('li', null, 'Compute offset: ', h('code', null, 'target_pc - (instruction_pc + LEN)')),
+      h('p', null,
+        'Use ', h('strong', null, 'forward-reference patching'), ': reserve space first, fill in jump offsets once target positions are known.'
       ),
+      h('pre', null, h('code', null,
+        '# 1. Compile predicate\ncompile_node(iseq, node.predicate)\n\n# 2. Reserve Branchunless slot\nbr_pc = iseq.size\niseq.emit_placeholder(YRuby::Insns::Branchunless::LEN)\n\n# 3. Compile then-branch\ncompile_node(iseq, node.statements)\n\n# 4. Reserve Jump slot (skip else)\nthen_end_pc = iseq.size\niseq.emit_placeholder(YRuby::Insns::Jump::LEN)\n\n# 5. Patch Branchunless → else label\nelse_label = iseq.size\nbr_offset = else_label - (br_pc + Branchunless::LEN)\niseq.patch_at!(br_pc, Branchunless, br_offset)\n\n# 6. Compile else-branch\n# node.consequent is ElseNode → compile_node(iseq, node.consequent.statements)\n# node.consequent is IfNode  → compile_conditional_node(iseq, node.consequent)\n\n# 7. Patch Jump → end label\nend_label = iseq.size\njump_offset = end_label - (then_end_pc + Jump::LEN)\niseq.patch_at!(then_end_pc, Jump, jump_offset)'
+      )),
     ),
     instructions: 'branchunless · jump · compile_conditional_node',
     stub: step6Stub,

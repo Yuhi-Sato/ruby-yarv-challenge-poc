@@ -13,7 +13,7 @@ const VM_API = [
   { sig: 'vm.topn(n)', desc: 'Peek nth from top (1 = top)' },
   { sig: 'vm.env_read(index)', desc: 'Read local variable at index' },
   { sig: 'vm.env_write(index, v)', desc: 'Write local variable at index' },
-  { sig: 'vm.set_pc(dst)', desc: 'Jump to instruction dst' },
+  { sig: 'vm.add_pc(offset)', desc: 'Adjust PC by relative offset (branches)' },
   { sig: 'vm.define_method(m, i)', desc: 'Register method iseq on current class' },
   { sig: 'vm.sendish(cd)', desc: 'Dispatch method call → returns result' },
   { sig: 'vm.self_value', desc: 'Current self object' },
