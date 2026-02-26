@@ -1,9 +1,9 @@
 # Ruby YARV Challenge
 
-ブラウザ上でも、ローカル環境でも動く Ruby VM (YARV) & コンパイラ実装ワークショップです。
-RubyKaigi LT 参加者が Fibonacci 関数を独自実装した YARV VM で動かすことを最終目標とします。
+A browser-based (and local) interactive workshop where you implement Ruby's VM (YARV) and compiler from scratch.
+The final goal is to make a Fibonacci function run on your own YARV implementation.
 
-## 最終目標
+## Final Goal
 
 ```ruby
 def fib(n)
@@ -18,84 +18,84 @@ fib(10)  # => 55
 
 ---
 
-## クイックスタート
+## Quick Start
 
-### ブラウザで動かす（推奨）
+### Browser (recommended)
 
 ```bash
 npm install
-npm run dev   # http://localhost:5173 で起動
+npm run dev   # Open http://localhost:5173
 ```
 
-### ローカルで動かす（Ruby 環境）
+### Local (Ruby environment)
 
 ```bash
-gem install yruby   # yruby gem をインストール
-ruby scripts/run_challenge.rb        # 全ステップのテストを実行
-ruby scripts/run_challenge.rb 1      # ステップ 1 のみテスト
-ruby scripts/run_challenge.rb 1 3    # ステップ 1〜3 をテスト
+gem install yruby          # Install the yruby gem
+ruby scripts/run_challenge.rb        # Run tests for all steps
+ruby scripts/run_challenge.rb 1      # Run tests for step 1 only
+ruby scripts/run_challenge.rb 1 3    # Run tests for steps 1 through 3
 ```
 
-実装ファイルは `src/ruby/stubs/` にあります。ファイルを編集してテストを実行してください。
+Edit your implementations in `src/ruby/stubs/`, then run the script to check your work.
 
 ---
 
-## チュートリアル
+## Tutorial
 
-各ステップで **VM 命令** と **コンパイラメソッド** をセットで実装します。
-ステップは積み上がる構造になっており、ステップ N を実行すると 1〜N のコードがまとめて使われます。
+Each step has you implement a **VM instruction** and the matching **compiler method** together.
+Steps accumulate: running step N loads your implementations for steps 1 through N.
 
 ---
 
-### Step 1: Integer Literals — スタックに値を積む
+### Step 1: Integer Literals — Push a value onto the stack
 
-**VM 命令: `putobject`**
+**VM instruction: `putobject`**
 
-YARV はスタックマシンです。すべての値はスタックを経由して流れます。
+YARV is a **stack machine**. Every value flows through a fixed-size stack.
 
-- `putobject` はリテラル値をスタックに積みます
-- `vm.push(value)` を使って積んでください
+- `putobject` pushes a literal value onto the stack
+- Use `vm.push(value)` to push
 
-**コンパイラ: `compile_integer_node`**
+**Compiler: `compile_integer_node`**
 
-- `Prism::IntegerNode` は整数リテラル（例: `42`）を表します
-- `node.value` に整数が入っています — `iseq.emit(Putobject, node.value)` を emit してください
+- `Prism::IntegerNode` represents an integer literal (e.g. `42`)
+- `node.value` holds the integer — emit `iseq.emit(Putobject, node.value)`
 
-**期待するバイトコード（`42` の場合）:**
+**Expected bytecode for `42`:**
 
 ```
 0000 putobject 42
 0002 leave
 ```
 
-**テストケース:**
+**Test cases:**
 
-| 入力 | 期待する結果 |
-|------|-------------|
-| `42` | `42` |
-| `100` | `100` |
-| `0` | `0` |
+| Input | Expected |
+|-------|----------|
+| `42`  | `42`     |
+| `100` | `100`    |
+| `0`   | `0`      |
 
-**ヒント:**
-1. `vm.push(x)` で値をスタックに積む。`iseq.emit(InsnClass, *operands)` で命令を追加する。
+**Hints:**
+1. `vm.push(x)` places a value on top of the stack. `iseq.emit(InsnClass, *operands)` appends an instruction to the instruction sequence.
 2. Putobject: `vm.push(value)` — Compiler: `iseq.emit(YRuby::Insns::Putobject, node.value)`
 
 ---
 
-### Step 2: Addition — 加算
+### Step 2: Addition
 
-**VM 命令: `opt_plus`**
+**VM instruction: `opt_plus`**
 
-- `opt_plus` はスタックから 2 値を pop して和を push します
-- スタックの覗き方: `vm.topn(2)` = 左辺 (a)、`vm.topn(1)` = 右辺 (b)
-- 両方 pop して `a + b` を push
+- `opt_plus` pops two values and pushes their sum
+- Stack peek: `vm.topn(2)` = left operand (a), `vm.topn(1)` = right operand (b)
+- Pop both, then push `a + b`
 
-**コンパイラ: `compile_binary_plus`**
+**Compiler: `compile_binary_plus`**
 
-- オペランドは `compile_call_node_dispatch` でコンパイル済み
-- `iseq.emit(YRuby::Insns::OptPlus)` を emit するだけ
+- The operands are already compiled by `compile_call_node_dispatch`
+- You only need to emit `iseq.emit(YRuby::Insns::OptPlus)`
 
-**期待するバイトコード（`1 + 2` の場合）:**
+**Expected bytecode for `1 + 2`:**
 
 ```
 0000 putobject 1
@@ -104,32 +104,32 @@ YARV はスタックマシンです。すべての値はスタックを経由し
 0005 leave
 ```
 
-**テストケース:**
+**Test cases:**
 
-| 入力 | 期待する結果 |
-|------|-------------|
-| `1 + 2` | `3` |
-| `10 + 5` | `15` |
-| `0 + 0` | `0` |
+| Input    | Expected |
+|----------|----------|
+| `1 + 2`  | `3`      |
+| `10 + 5` | `15`     |
+| `0 + 0`  | `0`      |
 
-**ヒント:**
-1. `1 + 2` の場合、`opt_plus` 実行前のスタックは `[1, 2]`。`topn(2)=1`（左）、`topn(1)=2`（右）。両方 pop して和を push。
+**Hints:**
+1. For `1 + 2`, the stack before `opt_plus` is `[1, 2]`. `topn(2)=1` (left), `topn(1)=2` (right). Pop both, push their sum.
 2. OptPlus: `b = vm.pop; a = vm.pop; vm.push(a + b)` — Compiler: `iseq.emit(YRuby::Insns::OptPlus)`
 
 ---
 
-### Step 3: Subtraction — 減算
+### Step 3: Subtraction
 
-**VM 命令: `opt_minus`**
+**VM instruction: `opt_minus`**
 
-- `opt_minus`: `topn(2)` = a（左辺）、`topn(1)` = b（右辺）、`a - b` を push
-- **順番が重要！** `a - b`（左 - 右）であって `b - a` ではありません
+- `opt_minus`: peek `topn(2)` = a (left), `topn(1)` = b (right), push `a − b`
+- **Order matters!** Compute `a − b`, not `b − a`
 
-**コンパイラ: `compile_binary_minus`**
+**Compiler: `compile_binary_minus`**
 
-- `compile_binary_plus` と同じパターン。`OptMinus` を emit するだけ
+- Same pattern as `compile_binary_plus`, but emit `OptMinus`
 
-**期待するバイトコード（`10 - 3` の場合）:**
+**Expected bytecode for `10 - 3`:**
 
 ```
 0000 putobject 10
@@ -138,41 +138,41 @@ YARV はスタックマシンです。すべての値はスタックを経由し
 0005 leave
 ```
 
-**テストケース:**
+**Test cases:**
 
-| 入力 | 期待する結果 |
-|------|-------------|
-| `10 - 3` | `7` |
-| `5 - 5` | `0` |
-| `100 - 50` | `50` |
+| Input      | Expected |
+|------------|----------|
+| `10 - 3`   | `7`      |
+| `5 - 5`    | `0`      |
+| `100 - 50` | `50`     |
 
-**ヒント:**
-1. Step 2 と同じスタックパターンだが `a - b` を計算する。`topn(2)` が左辺。順番に注意！
+**Hints:**
+1. Same stack pattern as Step 2, but compute `a - b`. `topn(2)` is the left operand. Order matters!
 2. OptMinus: `b = vm.pop; a = vm.pop; vm.push(a - b)` — Compiler: `iseq.emit(YRuby::Insns::OptMinus)`
 
 ---
 
-### Step 4: Local Variables — ローカル変数
+### Step 4: Local Variables
 
-**EP 相対アドレッシング**
+**EP-relative addressing**
 
-ローカル変数はスタック上に置かれ、**EP (Environment Pointer)** を基準にアドレスが決まります。
+Locals live in the stack, addressed via the **EP (Environment Pointer)**:
 
-- `env_read(-idx)` → インデックス idx のローカル変数を読む
-- `env_write(-idx, val)` → インデックス idx のローカル変数に書く
-- 内部的には: `stack[ep + (-idx)]`
+- `env_read(-idx)` → read local at index idx
+- `env_write(-idx, val)` → write local at index idx
+- Internally: `stack[ep + (-idx)]`
 
-**VM 命令: `getlocal` / `setlocal`**
+**VM instructions: `getlocal` / `setlocal`**
 
-- **Getlocal(idx)**: `env_read(-idx)` を読んで push
-- **Setlocal(idx)**: 値を pop して `env_write(-idx, val)` で書く
+- **Getlocal(idx)**: read `env_read(-idx)`, push it
+- **Setlocal(idx)**: pop a value, write it with `env_write(-idx, val)`
 
-**コンパイラ: `compile_local_var_read` / `compile_local_var_write`**
+**Compiler: `compile_local_var_read` / `compile_local_var_write`**
 
-- インデックス参照: `@index_lookup_table[node.name]`
-- 書き込み: 値をコンパイルして `Dup` を emit、次に `Setlocal` を emit
+- Look up the index: `@index_lookup_table[node.name]`
+- For write: compile the value, emit `Dup`, then emit `Setlocal`
 
-**期待するバイトコード（`x = 5; x` の場合）:**
+**Expected bytecode for `x = 5; x`:**
 
 ```
 0000 putobject 5
@@ -182,33 +182,33 @@ YARV はスタックマシンです。すべての値はスタックを経由し
 0007 leave
 ```
 
-**テストケース:**
+**Test cases:**
 
-| 入力 | 期待する結果 |
-|------|-------------|
-| `x = 5; x` | `5` |
-| `a = 10; b = 20; a + b` | `30` |
+| Input                  | Expected |
+|------------------------|----------|
+| `x = 5; x`             | `5`      |
+| `a = 10; b = 20; a + b` | `30`    |
 
-**ヒント:**
-1. Getlocal は `env_read(-idx)` をスタックに積む。Setlocal は pop して `env_write(-idx, val)` で格納。コンパイラでは `@index_lookup_table[node.name]` で変数インデックスを得る。
-2. Getlocal: `vm.push(vm.env_read(-idx))` — Setlocal: `vm.env_write(-idx, vm.pop)` — compile_local_var_write: node.value をコンパイルして Dup → Setlocal の順で emit
+**Hints:**
+1. Getlocal pushes `env_read(-idx)` onto the stack. Setlocal pops and stores with `env_write(-idx, val)`. In the compiler, `@index_lookup_table[node.name]` gives the variable index.
+2. Getlocal: `vm.push(vm.env_read(-idx))` — Setlocal: `vm.env_write(-idx, vm.pop)` — compile_local_var_write: compile `node.value`, then emit `Dup`, then emit `Setlocal` with the index
 
 ---
 
-### Step 5: Comparison — 比較
+### Step 5: Comparison — Less Than
 
-**VM 命令: `opt_lt`**
+**VM instruction: `opt_lt`**
 
-- `opt_lt`: `topn(2)` = a（左辺）、`topn(1)` = b（右辺）、`a < b` の結果を push
-- `opt_plus` / `opt_minus` と同じスタックパターン
+- `opt_lt`: peek `topn(2)` = a, `topn(1)` = b, push `a < b`
+- Same stack pattern as `opt_plus` / `opt_minus`
 
-**コンパイラ: `compile_binary_lt`**
+**Compiler: `compile_binary_lt`**
 
-- `compile_binary_plus` と同じパターン。`OptLt` を emit するだけ
+- Same pattern as `compile_binary_plus`, but emit `OptLt`
 
-結果（`true` または `false`）は Step 6 の分岐命令が消費します。
+The boolean result (`true` or `false`) will be consumed by the branch instructions in Step 6.
 
-**期待するバイトコード（`3 < 5` の場合）:**
+**Expected bytecode for `3 < 5`:**
 
 ```
 0000 putobject 3
@@ -217,77 +217,77 @@ YARV はスタックマシンです。すべての値はスタックを経由し
 0005 leave
 ```
 
-**テストケース:**
+**Test cases:**
 
-| 入力 | 期待する結果 |
-|------|-------------|
-| `3 < 5` | `true` |
-| `10 < 5` | `false` |
-| `5 < 5` | `false` |
+| Input    | Expected |
+|----------|----------|
+| `3 < 5`  | `true`   |
+| `10 < 5` | `false`  |
+| `5 < 5`  | `false`  |
 
-**ヒント:**
-1. `opt_plus` / `opt_minus` と同じスタックパターンだが、`a < b` のブール値を push。
+**Hints:**
+1. Same stack pattern as `opt_plus` / `opt_minus`, but push the boolean result of `a < b`.
 2. OptLt: `b = vm.pop; a = vm.pop; vm.push(a < b)` — Compiler: `iseq.emit(YRuby::Insns::OptLt)`
 
 ---
 
-### Step 6: Control Flow — 条件分岐
+### Step 6: Control Flow — Conditional Branching
 
-**重要な前提知識: PC とオフセット**
+**Key insight: PC and offsets**
 
-VM は命令を **実行する前に** PC を命令長だけ進めます:
+The VM advances PC by instruction length **before** executing:
 
 ```
 insn = iseq.fetch(pc)
-pc += insn::LEN    ← 先に進む
-insn.call(vm, ...) ← その後実行
+pc += insn::LEN    ← advanced first
+insn.call(vm, ...) ← then executed
 ```
 
-分岐命令は **相対オフセット** を使います: `vm.add_pc(dst)` で現在位置から dst だけ移動。
+Branch instructions use **relative offsets**: `vm.add_pc(dst)` adjusts PC by `dst` from the current position.
 
-**VM 命令: `branchunless`**
+**VM instruction: `branchunless`**
 
-- 条件を pop して、**偽**（nil または false）なら `vm.add_pc(dst)`
+- Pop condition; if **falsy** (nil or false), call `vm.add_pc(dst)`
 
-**VM 命令: `jump`**
+**VM instruction: `jump`**
 
-- 無条件に `vm.add_pc(dst)`
+- Unconditionally call `vm.add_pc(dst)`
 
-**コンパイラ: `compile_conditional_node`**
+**Compiler: `compile_conditional_node`**
 
-**前方参照パッチング** を使います: 先にスペースを確保し、ジャンプ先が決まってからオフセットを書き込む。
+Use **forward-reference patching**: reserve space first, fill in jump offsets once target positions are known.
 
 ```ruby
-# 1. 条件式をコンパイル
+# 1. Compile the predicate
 compile_node(iseq, node.predicate)
 
-# 2. Branchunless のプレースホルダーを確保
+# 2. Reserve a Branchunless slot
 br_pc = iseq.size
 iseq.emit_placeholder(YRuby::Insns::Branchunless::LEN)
 
-# 3. then ブロックをコンパイル
+# 3. Compile the then-branch
 compile_node(iseq, node.statements)
 
-# 4. Jump のプレースホルダーを確保（else をスキップ）
+# 4. Reserve a Jump slot (to skip the else-branch)
 then_end_pc = iseq.size
 iseq.emit_placeholder(YRuby::Insns::Jump::LEN)
 
-# 5. Branchunless を else ラベルにパッチ
+# 5. Patch Branchunless → else label
 else_label = iseq.size
 br_offset = else_label - (br_pc + Branchunless::LEN)
 iseq.patch_at!(br_pc, Branchunless, br_offset)
 
-# 6. else ブロックをコンパイル
-# node.consequent が ElseNode → compile_node(iseq, node.consequent.statements)
-# node.consequent が IfNode  → compile_conditional_node(iseq, node.consequent)
+# 6. Compile the else-branch
+# node.consequent is ElseNode → compile_node(iseq, node.consequent.statements)
+# node.consequent is IfNode  → compile_conditional_node(iseq, node.consequent)
 
-# 7. Jump を end ラベルにパッチ
+# 7. Patch Jump → end label
 end_label = iseq.size
 jump_offset = end_label - (then_end_pc + Jump::LEN)
 iseq.patch_at!(then_end_pc, Jump, jump_offset)
 ```
 
-**期待するバイトコード（`if 3 < 5; 10; else; 20; end` の場合）:**
+**Expected bytecode for `if 3 < 5; 10; else; 20; end`:**
 
 ```
 0000 putobject 3
@@ -300,43 +300,43 @@ iseq.patch_at!(then_end_pc, Jump, jump_offset)
 0013 leave
 ```
 
-**テストケース:**
+**Test cases:**
 
-| 入力 | 期待する結果 |
-|------|-------------|
-| `if 3 < 5; 10; else; 20; end` | `10` |
-| `if 10 < 5; 10; else; 20; end` | `20` |
+| Input                             | Expected |
+|-----------------------------------|----------|
+| `if 3 < 5; 10; else; 20; end`    | `10`     |
+| `if 10 < 5; 10; else; 20; end`   | `20`     |
 
-**ヒント:**
-1. Branchunless: 条件を pop して偽なら `vm.add_pc(dst)`。Jump: 常に `vm.add_pc(dst)`。コンパイラのアルゴリズムはチュートリアルの 7 ステップに従う。
-2. Branchunless: `val = vm.pop; vm.add_pc(dst) unless val` — Jump: `vm.add_pc(dst)` — Compiler: 上の 7 ステップのパッチングアルゴリズムをそのまま実装
+**Hints:**
+1. Branchunless: pop the condition, call `vm.add_pc(dst)` only if it was falsy. Jump: always call `vm.add_pc(dst)`. Follow the 7-step patching algorithm above exactly.
+2. Branchunless: `val = vm.pop; vm.add_pc(dst) unless val` — Jump: `vm.add_pc(dst)` — Compiler: implement the 7-step algorithm above
 
 ---
 
-### Step 7: Methods & Fibonacci — メソッドと再帰！
+### Step 7: Methods & Fibonacci!
 
-**VM 命令: `definemethod`**
+**VM instruction: `definemethod`**
 
-- メソッドの iseq を現在のクラスに登録します
-- `vm.define_method(mid, iseq)` を使います
+- Registers a method's iseq on the current class
+- Use `vm.define_method(mid, iseq)`
 
-**VM 命令: `opt_send_without_block`**
+**VM instruction: `opt_send_without_block`**
 
-- `vm.sendish(cd)` でメソッド呼び出しをディスパッチします
-- レシーバ + 引数で新しいフレームをセットアップ
-- メソッドの `leave` 命令が戻り値を push します
+- `vm.sendish(cd)` dispatches the method call
+- Sets up a new frame with receiver + arguments
+- The method's `leave` instruction pushes the return value
 
-**コンパイラ: `compile_def_node`**
+**Compiler: `compile_def_node`**
 
-- `YRuby::Iseq.iseq_new_method(node)` でメソッド用 iseq をコンパイル
-- `Definemethod` + `Putobject(name)` を emit
+- `YRuby::Iseq.iseq_new_method(node)` compiles the method body into an iseq
+- Emit `Definemethod` + `Putobject(name)`
 
-**コンパイラ: `compile_general_call`**
+**Compiler: `compile_general_call`**
 
-- `Putself` を emit（レシーバなし呼び出しの暗黙のレシーバ）
-- 引数をコンパイルして `CallData` を作り、`OptSendWithoutBlock` を emit
+- Emit `Putself` (implicit receiver for receiverless calls)
+- Compile arguments, build `CallData`, emit `OptSendWithoutBlock`
 
-**最終目標: `fib(10) = 55`**
+**Final goal:**
 
 ```ruby
 def fib(n)
@@ -349,56 +349,56 @@ end
 fib(10)  # => 55
 ```
 
-**テストケース:**
+**Test cases:**
 
-| 入力 | 期待する結果 |
-|------|-------------|
+| Input | Expected |
+|-------|----------|
 | `def identity(x); x; end; identity(42)` | `42` |
 | `def fib(n); if n < 2; n; else; fib(n-1) + fib(n-2); end; end; fib(5)` | `5` |
 | `def fib(n); if n < 2; n; else; fib(n-1) + fib(n-2); end; end; fib(10)` | `55` |
 
-**ヒント:**
-1. Definemethod: `vm.define_method(mid, iseq)` — OptSendWithoutBlock: `vm.sendish(cd)` — compile_def_node: `YRuby::Iseq.iseq_new_method(node)` でメソッド iseq を作り、Definemethod と `Putobject(node.name)` を emit。
-2. compile_general_call: Putself を emit し、引数を `compile_node` でコンパイルして、`YRuby::CallData.new(mid: node.name, argc: node.arguments.arguments.length)` で OptSendWithoutBlock を emit
+**Hints:**
+1. Definemethod: `vm.define_method(mid, iseq)` — OptSendWithoutBlock: `vm.sendish(cd)` — compile_def_node: create a method iseq with `YRuby::Iseq.iseq_new_method(node)`, then emit `Definemethod` and `Putobject(node.name)`.
+2. compile_general_call: emit `Putself`, compile each argument with `compile_node`, then emit `OptSendWithoutBlock` with `YRuby::CallData.new(mid: node.name, argc: node.arguments.arguments.length)`
 
 ---
 
-## VM API リファレンス
+## VM API Reference
 
 ```ruby
-vm.push(x)              # スタックに値を積む
-vm.pop                  # スタックから値を取り出す
-vm.topn(n)              # 上から n 番目の値を覗く（1 = 一番上）
-vm.env_read(-idx)       # ローカル変数を読む
-vm.env_write(-idx, v)   # ローカル変数に書く
-vm.add_pc(offset)       # PC を相対オフセットだけ移動（分岐用）
-vm.define_method(m, iseq)   # メソッドを登録
-vm.sendish(cd)          # メソッド呼び出しをディスパッチ
+vm.push(x)                  # Push value onto the stack
+vm.pop                      # Pop and return the top value
+vm.topn(n)                  # Peek at the nth value from the top (1 = top)
+vm.env_read(-idx)           # Read a local variable at index idx
+vm.env_write(-idx, v)       # Write a local variable at index idx
+vm.add_pc(offset)           # Adjust PC by a relative offset (for branches)
+vm.define_method(m, iseq)   # Register a method on the current class
+vm.sendish(cd)              # Dispatch a method call
 ```
 
-## Iseq API リファレンス
+## Iseq API Reference
 
 ```ruby
-iseq.emit(InsnClass, *operands)           # 命令を追加
-iseq.emit_placeholder(InsnClass::LEN)     # 前方参照用プレースホルダーを確保
-iseq.patch_at!(pc, InsnClass, offset)     # プレースホルダーに実際の命令を書き込む
-iseq.size                                 # 現在の iseq のサイズ（ジャンプオフセット計算用）
+iseq.emit(InsnClass, *operands)           # Append an instruction
+iseq.emit_placeholder(InsnClass::LEN)     # Reserve space for a forward reference
+iseq.patch_at!(pc, InsnClass, offset)     # Fill in a placeholder with the real instruction
+iseq.size                                 # Current iseq size (for computing jump offsets)
 
-YRuby::Iseq.iseq_new_method(node)         # DefNode からメソッド用 iseq を生成
+YRuby::Iseq.iseq_new_method(node)         # Create a method iseq from a DefNode
 ```
 
 ---
 
-## プロジェクト構成
+## Project Structure
 
 ```
 src/
 ├── ruby/
 │   ├── system/
-│   │   ├── challenge_patch.rb    # YRuby::Compile に Patch モジュールを prepend
-│   │   ├── challenge_reset.rb    # 実装メソッドを NotImplementedError で上書き
-│   │   └── test_runner.rb        # ChallengeTestRunner クラス
-│   └── stubs/                    # 参加者が実装するファイル
+│   │   ├── challenge_patch.rb    # Prepends Patch module to YRuby::Compile
+│   │   ├── challenge_reset.rb    # Stubs out implementation methods with NotImplementedError
+│   │   └── test_runner.rb        # ChallengeTestRunner class
+│   └── stubs/                    # Files you implement
 │       ├── step1.rb              # Putobject + compile_integer_node
 │       ├── step2.rb              # OptPlus + compile_binary_plus
 │       ├── step3.rb              # OptMinus + compile_binary_minus
@@ -409,84 +409,84 @@ src/
 └── ...
 
 scripts/
-└── run_challenge.rb              # ローカルテストランナー
+└── run_challenge.rb              # Local CLI test runner
 ```
 
 ---
 
-## ローカル開発のセットアップ詳細
+## Local Setup
 
-### 必要環境
+### Requirements
 
-- Ruby 3.3 以上（Prism が組み込み済み）
+- Ruby 3.3 or later (Prism is bundled)
 - `yruby` gem
 
-### セットアップ
+### Setup
 
 ```bash
-# リポジトリをクローン
+# Clone the repository
 git clone https://github.com/Yuhi-Sato/ruby-yarv-challenge-poc
 cd ruby-yarv-challenge-poc
 
-# yruby gem をインストール
+# Install the yruby gem
 gem install yruby
 ```
 
-### テストの実行方法
+### Running tests
 
 ```bash
-# ステップ 1 のテストを実行
+# Test step 1
 ruby scripts/run_challenge.rb 1
 
-# 複数ステップ（1〜3）を実行
+# Test steps 1 through 3
 ruby scripts/run_challenge.rb 1 3
 
-# 全ステップを実行
+# Test all steps
 ruby scripts/run_challenge.rb
 ```
 
-### 実装の流れ
+### Workflow
 
-1. `src/ruby/stubs/step1.rb` を開く
-2. `TODO` コメントを実装に置き換える
-3. `ruby scripts/run_challenge.rb 1` でテストを実行
-4. 全テストが通ったら次のステップへ
+1. Open `src/ruby/stubs/step1.rb`
+2. Replace the `TODO` comment with your implementation
+3. Run `ruby scripts/run_challenge.rb 1`
+4. Once all tests pass, move to the next step
 
 ---
 
-## ブラウザ版のセットアップ
+## Browser Setup
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173 で起動
-npm run build    # 本番ビルド → ./dist/
-npm run preview  # ビルド結果をローカルでプレビュー
+npm run dev      # Start dev server at http://localhost:5173
+npm run build    # Production build → ./dist/
+npm run preview  # Preview the production build locally
 ```
 
-静的ホスティング（Vercel、GitHub Pages、Cloudflare Pages 等）に `./dist/` をデプロイするだけで公開できます。
+Deploy `./dist/` to any static host (Vercel, GitHub Pages, Cloudflare Pages, etc.).
 
 ---
 
-## アーキテクチャ
+## Architecture
 
-### コード積み上げモデル（Accumulation Model）
+### Accumulation Model
 
-ステップ N のテストを実行すると、ステップ 1〜N の実装がすべて結合されて実行されます。
+When you run tests for step N, your implementations for steps 1 through N are all merged together:
 
 ```
-challenge_patch.rb      # Patch モジュールを YRuby::Compile に prepend
+challenge_patch.rb   # Prepend Patch module to YRuby::Compile
     ↓
-challenge_reset.rb      # 実装メソッドを NotImplementedError で上書き
+challenge_reset.rb   # Override implementation methods with NotImplementedError
     ↓
-step1.rb                # 参加者の Step 1 実装（再上書き）
-step2.rb                # 参加者の Step 2 実装
+step1.rb             # Your Step 1 implementation (re-overrides)
+step2.rb             # Your Step 2 implementation
 ...
-stepN.rb                # 参加者の現在ステップ実装
+stepN.rb             # Your current step implementation
     ↓
-テスト実行
+Run tests
 ```
 
-### 参考リンク
+### References
 
 - **yruby gem**: https://github.com/Yuhi-Sato/yruby
 - **Ruby WASM**: https://github.com/ruby/ruby.wasm
