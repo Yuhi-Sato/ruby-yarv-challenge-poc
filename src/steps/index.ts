@@ -25,6 +25,9 @@ export const STEPS: StepConfig[] = [
         h('li', null, 'Use ', h('code', null, 'vm.push(value)'), ' to push'),
       ),
       h('h3', null, 'Compiler: compile_integer_node'),
+      h('p', null,
+        'This method compiles ', h('code', null, 'Prism::IntegerNode'), ' (integer literals like ', h('code', null, '42'), ') into a ', h('code', null, 'Putobject'), ' instruction.'
+      ),
       h('ul', null,
         h('li', null, h('code', null, 'Prism::IntegerNode'), ' represents a literal integer (e.g. ', h('code', null, '42'), ')'),
         h('li', null, h('code', null, 'node.value'), ' holds the integer — emit ', h('code', null, 'iseq.emit(Putobject, node.value)')),
@@ -59,6 +62,9 @@ export const STEPS: StepConfig[] = [
         h('li', null, 'Pop both, then push ', h('code', null, 'a + b')),
       ),
       h('h3', null, 'Compiler: compile_binary_plus'),
+      h('p', null,
+        'This method compiles the ', h('code', null, '+'), ' operator into an ', h('code', null, 'OptPlus'), ' instruction.'
+      ),
       h('ul', null,
         h('li', null, 'The operands are already compiled by ', h('code', null, 'compile_call_node_dispatch')),
         h('li', null, 'You only need to emit ', h('code', null, 'iseq.emit(YRuby::Insns::OptPlus)')),
@@ -89,6 +95,9 @@ export const STEPS: StepConfig[] = [
         h('li', null, h('strong', null, 'Order matters!'), ' a − b, not b − a'),
       ),
       h('h3', null, 'Compiler: compile_binary_minus'),
+      h('p', null,
+        'This method compiles the ', h('code', null, '\u2212'), ' operator into an ', h('code', null, 'OptMinus'), ' instruction.'
+      ),
       h('ul', null,
         h('li', null, 'Same pattern as ', h('code', null, 'compile_binary_plus'), ', but emit ', h('code', null, 'OptMinus')),
       ),
@@ -129,6 +138,10 @@ export const STEPS: StepConfig[] = [
         h('li', null, h('strong', null, 'Setlocal(idx)'), ': pop a value, write it with ', h('code', null, 'env_write(-idx, val)')),
       ),
       h('h3', null, 'Compiler: compile_local_var_read / write'),
+      h('p', null,
+        h('code', null, 'compile_local_var_read'), ' compiles ', h('code', null, 'Prism::LocalVariableReadNode'), ' (variable references like ', h('code', null, 'x'), ') into a ', h('code', null, 'Getlocal'), ' instruction. ',
+        h('code', null, 'compile_local_var_write'), ' compiles ', h('code', null, 'Prism::LocalVariableWriteNode'), ' (assignments like ', h('code', null, 'x = 5'), ') into ', h('code', null, 'Dup'), ' + ', h('code', null, 'Setlocal'), '.'
+      ),
       h('ul', null,
         h('li', null, 'Look up index: ', h('code', null, '@index_lookup_table[node.name]')),
         h('li', null, 'For write: compile value, emit ', h('code', null, 'Dup'), ', then ', h('code', null, 'Setlocal')),
@@ -158,6 +171,9 @@ export const STEPS: StepConfig[] = [
         h('li', null, 'Same pattern as ', h('code', null, 'opt_plus'), ' / ', h('code', null, 'opt_minus')),
       ),
       h('h3', null, 'Compiler: compile_binary_lt'),
+      h('p', null,
+        'This method compiles the ', h('code', null, '<'), ' operator into an ', h('code', null, 'OptLt'), ' instruction.'
+      ),
       h('ul', null,
         h('li', null, 'Same pattern as compile_binary_plus, but emit ', h('code', null, 'OptLt')),
       ),
@@ -203,6 +219,9 @@ export const STEPS: StepConfig[] = [
       ),
       h('h3', null, 'Compiler: compile_conditional_node'),
       h('p', null,
+        'This method compiles ', h('code', null, 'Prism::IfNode'), ' (if/else expressions) into a sequence of ', h('code', null, 'Branchunless'), ' and ', h('code', null, 'Jump'), ' instructions.'
+      ),
+      h('p', null,
         'Use ', h('strong', null, 'forward-reference patching'), ': reserve space first, fill in jump offsets once target positions are known.'
       ),
       h('pre', null, h('code', null,
@@ -239,11 +258,17 @@ export const STEPS: StepConfig[] = [
         h('li', null, 'The method\'s Leave instruction pushes the return value'),
       ),
       h('h3', null, 'Compiler: compile_def_node'),
+      h('p', null,
+        'This method compiles ', h('code', null, 'Prism::DefNode'), ' (method definitions like ', h('code', null, 'def fib(n)'), ') by creating a method iseq and emitting ', h('code', null, 'Definemethod'), '.'
+      ),
       h('ul', null,
         h('li', null, h('code', null, 'YRuby::Iseq.iseq_new_method(node)'), ' compiles the body'),
         h('li', null, 'Emit ', h('code', null, 'Definemethod'), ' + ', h('code', null, 'Putobject(name)')),
       ),
       h('h3', null, 'Compiler: compile_general_call'),
+      h('p', null,
+        'This method compiles ', h('code', null, 'Prism::CallNode'), ' (method calls like ', h('code', null, 'fib(10)'), ') by emitting receiver, arguments, and ', h('code', null, 'OptSendWithoutBlock'), '.'
+      ),
       h('ul', null,
         h('li', null, 'Emit ', h('code', null, 'Putself'), ' (implicit receiver for receiverless calls)'),
         h('li', null, 'Compile arguments, build ', h('code', null, 'CallData'), ', emit ', h('code', null, 'OptSendWithoutBlock')),
