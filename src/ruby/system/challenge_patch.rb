@@ -36,13 +36,13 @@ module Patch
     if node.receiver.nil?
       compile_general_call(iseq, node)
     else
-      compile_node(iseq, node.receiver)
-      compile_node(iseq, node.arguments) if node.arguments
       case node.name
       when :+  then compile_binary_plus(iseq, node)
       when :-  then compile_binary_minus(iseq, node)
       when :<  then compile_binary_lt(iseq, node)
       else
+        compile_node(iseq, node.receiver)
+        compile_node(iseq, node.arguments) if node.arguments
         argc = node.arguments&.arguments&.size || 0
         case node.name
         when :*;  iseq.emit(YRuby::Insns::OptMult)

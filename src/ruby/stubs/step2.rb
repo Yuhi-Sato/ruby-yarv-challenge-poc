@@ -7,7 +7,11 @@ end
 
 module Patch
   def compile_binary_plus(iseq, node)
-    # TODO: Emit OptPlus
+    # In Ruby, `1 + 2` is parsed as a method call: 1.+(2)
+    # The AST looks like:
+    #   CallNode(receiver: IntegerNode(1), name: :+, arguments: ArgumentsNode([IntegerNode(2)]))
+    #
+    # TODO: Compile the receiver, compile the arguments, then emit OptPlus
     raise NotImplementedError, "compile_binary_plus not implemented"
   end
 end

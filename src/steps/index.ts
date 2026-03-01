@@ -63,18 +63,27 @@ export const STEPS: StepConfig[] = [
       ),
       h('h3', null, 'Compiler: compile_binary_plus'),
       h('p', null,
-        'This method compiles the ', h('code', null, '+'), ' operator into an ', h('code', null, 'OptPlus'), ' instruction.'
+        'In Ruby, ', h('code', null, '1 + 2'), ' is actually a method call: ', h('code', null, '1.+(2)'), '. ',
+        'Prism parses it as a ', h('code', null, 'CallNode'), ':'
+      ),
+      h('pre', null, h('code', null,
+        'CallNode\n  receiver: IntegerNode(1)   # left operand\n  name: :+\n  arguments: ArgumentsNode\n    [IntegerNode(2)]          # right operand'
+      )),
+      h('p', null,
+        'Your job: compile each part of the AST in order. Use ', h('code', null, 'compile_node(iseq, node)'),
+        ' to recursively compile any node — it dispatches to the right method (e.g. ', h('code', null, 'compile_integer_node'), ' for IntegerNode).'
       ),
       h('ul', null,
-        h('li', null, 'The operands are already compiled by ', h('code', null, 'compile_call_node_dispatch')),
-        h('li', null, 'You only need to emit ', h('code', null, 'iseq.emit(YRuby::Insns::OptPlus)')),
+        h('li', null, h('code', null, 'node.receiver'), ' — the left operand'),
+        h('li', null, h('code', null, 'node.arguments'), ' — the right operand(s)'),
+        h('li', null, 'Then emit ', h('code', null, 'OptPlus'), ' to add them'),
       ),
     ),
     instructions: 'opt_plus · compile_binary_plus',
     stub: step2Stub,
     hints: [
-      'For "1 + 2", the stack before opt_plus is [1, 2]. topn(2) = 1 (left), topn(1) = 2 (right). Pop both, push their sum.',
-      'OptPlus: b = vm.pop; a = vm.pop; vm.push(a + b) — Compiler: iseq.emit(YRuby::Insns::OptPlus)',
+      'For "1 + 2", the stack before opt_plus is [1, 2]. topn(2) = 1 (left), topn(1) = 2 (right). Pop both, push their sum. For the compiler, think about what needs to be on the stack before OptPlus runs.',
+      'OptPlus: b = vm.pop; a = vm.pop; vm.push(a + b) — Compiler: compile_node(iseq, node.receiver); compile_node(iseq, node.arguments); iseq.emit(YRuby::Insns::OptPlus)',
     ],
     testCases: [
       { description: '1 + 2 = 3', source: '1 + 2', expected: 3 },
@@ -96,17 +105,15 @@ export const STEPS: StepConfig[] = [
       ),
       h('h3', null, 'Compiler: compile_binary_minus'),
       h('p', null,
-        'This method compiles the ', h('code', null, '\u2212'), ' operator into an ', h('code', null, 'OptMinus'), ' instruction.'
-      ),
-      h('ul', null,
-        h('li', null, 'Same pattern as ', h('code', null, 'compile_binary_plus'), ', but emit ', h('code', null, 'OptMinus')),
+        h('code', null, '10 - 3'), ' is also a CallNode: ', h('code', null, '10.-(3)'),
+        '. Same compile pattern as Step 2 — compile receiver, arguments, then emit the instruction.'
       ),
     ),
     instructions: 'opt_minus · compile_binary_minus',
     stub: step3Stub,
     hints: [
-      'Same stack pattern as Step 2, but compute a - b. topn(2) is the left operand. Order matters!',
-      'OptMinus: b = vm.pop; a = vm.pop; vm.push(a - b) — Compiler: iseq.emit(YRuby::Insns::OptMinus)',
+      'Same stack pattern as Step 2, but compute a - b. topn(2) is the left operand. Order matters! The compiler pattern is identical to compile_binary_plus.',
+      'OptMinus: b = vm.pop; a = vm.pop; vm.push(a - b) — Compiler: compile_node(iseq, node.receiver); compile_node(iseq, node.arguments); iseq.emit(YRuby::Insns::OptMinus)',
     ],
     testCases: [
       { description: '10 - 3 = 7', source: '10 - 3', expected: 7 },
@@ -172,10 +179,8 @@ export const STEPS: StepConfig[] = [
       ),
       h('h3', null, 'Compiler: compile_binary_lt'),
       h('p', null,
-        'This method compiles the ', h('code', null, '<'), ' operator into an ', h('code', null, 'OptLt'), ' instruction.'
-      ),
-      h('ul', null,
-        h('li', null, 'Same pattern as compile_binary_plus, but emit ', h('code', null, 'OptLt')),
+        h('code', null, '3 < 5'), ' is also a method call: ', h('code', null, '3.<(5)'),
+        '. Same compile pattern as Steps 2 and 3 — compile receiver, arguments, then emit the instruction.'
       ),
       h('p', null,
         'The result (', h('code', null, 'true'), ' or ', h('code', null, 'false'), ') will be consumed by branch instructions in Step 6.'
@@ -184,8 +189,8 @@ export const STEPS: StepConfig[] = [
     instructions: 'opt_lt · compile_binary_lt',
     stub: step5Stub,
     hints: [
-      'Same stack pattern as opt_plus / opt_minus, but push the boolean result of a < b.',
-      'OptLt: b = vm.pop; a = vm.pop; vm.push(a < b) — Compiler: iseq.emit(YRuby::Insns::OptLt)',
+      'Same stack pattern as opt_plus / opt_minus, but push the boolean result of a < b. The compiler pattern is identical to Steps 2 and 3.',
+      'OptLt: b = vm.pop; a = vm.pop; vm.push(a < b) — Compiler: compile_node(iseq, node.receiver); compile_node(iseq, node.arguments); iseq.emit(YRuby::Insns::OptLt)',
     ],
     testCases: [
       { description: '3 < 5 → true', source: '3 < 5', expected: true },

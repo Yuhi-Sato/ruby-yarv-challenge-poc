@@ -7,7 +7,10 @@ end
 
 module Patch
   def compile_binary_lt(iseq, node)
-    # TODO: Emit OptLt
+    # Same pattern as compile_binary_plus/minus: `3 < 5` is 3.<(5)
+    #   CallNode(receiver: IntegerNode(3), name: :<, arguments: ArgumentsNode([IntegerNode(5)]))
+    #
+    # TODO: Compile the receiver, compile the arguments, then emit OptLt
     raise NotImplementedError, "compile_binary_lt not implemented"
   end
 end

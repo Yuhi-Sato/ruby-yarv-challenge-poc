@@ -7,7 +7,10 @@ end
 
 module Patch
   def compile_binary_minus(iseq, node)
-    # TODO: Emit OptMinus
+    # Same pattern as compile_binary_plus: `10 - 3` is 10.-(3)
+    #   CallNode(receiver: IntegerNode(10), name: :-, arguments: ArgumentsNode([IntegerNode(3)]))
+    #
+    # TODO: Compile the receiver, compile the arguments, then emit OptMinus
     raise NotImplementedError, "compile_binary_minus not implemented"
   end
 end
