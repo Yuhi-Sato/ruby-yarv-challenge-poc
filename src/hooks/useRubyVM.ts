@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 // @ts-ignore
 import { DefaultRubyVM } from '@ruby/wasm-wasi/dist/browser'
-// @ts-ignore
-import rubyWasm from '/ruby+yruby.wasm?url'
+const rubyWasm = `${import.meta.env.BASE_URL}ruby+yruby.wasm`
 
 export type VMStatus = 'loading' | 'ready' | 'error'
 export type VMInstance = any // ruby.wasm types are not well typed
