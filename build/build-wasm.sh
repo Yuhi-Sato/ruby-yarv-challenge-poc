@@ -14,7 +14,7 @@ BASE_WASM="../node_modules/@ruby/4.0-wasm-wasi/dist/ruby+stdlib.wasm"
 
 # Pack yruby gem files into a dedicated directory under the existing /usr/local/lib/ruby/
 # Avoids overwriting stdlib. $LOAD_PATH is added at runtime in useRubyVM.ts.
-rbwasm pack \
+bundle exec rbwasm pack \
   "$BASE_WASM" \
   --dir "${YRUBY_LIB}::/usr/local/lib/ruby/yruby" \
   -o ../public/ruby+yruby.wasm
