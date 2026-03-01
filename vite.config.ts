@@ -13,4 +13,5 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['@ruby/4.0-wasm-wasi', '@ruby/wasm-wasi'],
   },
+  base: '/ruby-yarv-challenge/',
 })
