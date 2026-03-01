@@ -9,6 +9,20 @@
 # ============================================================
 
 module Patch
+  # Short aliases — use Putobject instead of YRuby::Insns::Putobject
+  Putobject = YRuby::Insns::Putobject
+  OptPlus = YRuby::Insns::OptPlus
+  OptMinus = YRuby::Insns::OptMinus
+  Getlocal = YRuby::Insns::Getlocal
+  Setlocal = YRuby::Insns::Setlocal
+  Dup = YRuby::Insns::Dup
+  OptLt = YRuby::Insns::OptLt
+  Branchunless = YRuby::Insns::Branchunless
+  Jump = YRuby::Insns::Jump
+  Definemethod = YRuby::Insns::Definemethod
+  OptSendWithoutBlock = YRuby::Insns::OptSendWithoutBlock
+  Putself = YRuby::Insns::Putself
+
   # Override compile_node to dispatch challenge-target nodes
   # to per-node methods. Everything else falls through to the
   # gem's original compile_node via super.
@@ -16,6 +30,8 @@ module Patch
     case node
     when Prism::IntegerNode
       compile_integer_node(iseq, node)
+    when Prism::ArgumentsNode
+      compile_arguments_node(iseq, node)
     when Prism::LocalVariableReadNode
       compile_local_var_read(iseq, node)
     when Prism::LocalVariableWriteNode
@@ -65,6 +81,10 @@ module Patch
 
   def compile_integer_node(iseq, node)
     raise NotImplementedError, "compile_integer_node not implemented"
+  end
+
+  def compile_arguments_node(iseq, node)
+    raise NotImplementedError, "compile_arguments_node not implemented"
   end
 
   def compile_binary_plus(iseq, node)

@@ -22,7 +22,7 @@ export function StepNav({ currentStep, completedSteps, onStepChange }: StepNavPr
                 onClick={() => onStepChange(step.id)}
                 title={step.title}
               >
-                {isCompleted && !isActive ? '✓' : step.id}
+                {isCompleted && !isActive ? '✓' : step.id === 0 ? 'Intro' : step.id}
               </button>
             )
           })}

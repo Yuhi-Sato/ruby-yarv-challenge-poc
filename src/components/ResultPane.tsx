@@ -81,7 +81,12 @@ export function ResultPane({ result, expectedBytecode, onNextStep, isLastStep }:
                   </div>
                   <div className="test-details">
                     <div className="test-description">{test.description}</div>
-                    {!test.passed && (
+                    {!test.passed && test.error && (
+                      <div className="test-error">
+                        <pre className="test-error-message">{prettifyError(test.error)}</pre>
+                      </div>
+                    )}
+                    {!test.passed && !test.error && (
                       <div className="test-values">
                         <div>Expected: <code>{test.expected}</code></div>
                         <div>Got: <code>{test.got}</code></div>

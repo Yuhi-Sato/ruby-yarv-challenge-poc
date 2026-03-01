@@ -145,6 +145,25 @@
   font-family: 'Courier New', monospace;
 }
 
+/* ---- Per-test error ---- */
+
+.test-error {
+  margin-top: 0.25rem;
+}
+
+.test-error-message {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  background: white;
+  border: 1px solid #f0c8c8;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  color: #8B0000;
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* ---- Error section ---- */
 
 .error-section {

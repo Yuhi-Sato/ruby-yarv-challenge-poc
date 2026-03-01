@@ -7,7 +7,7 @@ import challengePatchRb from '../ruby/system/challenge_patch.rb?raw'
 import challengeResetRb from '../ruby/system/challenge_reset.rb?raw'
 import testRunnerRb from '../ruby/system/test_runner.rb?raw'
 
-const STORAGE_KEY = 'ruby-yarv-challenge-v1'
+const STORAGE_KEY = 'ruby-yarv-challenge-v2'
 
 function loadSavedState(): { currentStep?: number; userCode?: Record<number, string>; completedSteps?: number[] } {
   try {
@@ -27,8 +27,8 @@ export function useChallenge({ vmRef }: UseChallengeOptions) {
   const [state, setState] = useState<ChallengeState>(() => {
     const saved = loadSavedState()
     return {
-      currentStep: saved.currentStep ?? 1,
-      userCode: saved.userCode ?? { 1: STEPS[0].stub },
+      currentStep: saved.currentStep ?? 0,
+      userCode: saved.userCode ?? {},
       completedSteps: saved.completedSteps ?? [],
       lastResult: null,
       isRunning: false,
@@ -79,9 +79,15 @@ export function useChallenge({ vmRef }: UseChallengeOptions) {
       if (!currentStep) throw new Error('Step not found')
       if (!vmRef.current) throw new Error('VM not initialized')
 
-      // Accumulate user code from step 1 to currentStep (in order)
+      // Step 0 (Introduction) has no tests — early return
+      if (currentStep.testCases.length === 0) {
+        setState(s => ({ ...s, isRunning: false }))
+        return
+      }
+
+      // Accumulate user code from step 1 to currentStep (skip step 0)
       const stepsUpToCurrent = STEPS
-        .filter(s => s.id <= state.currentStep)
+        .filter(s => s.id >= 1 && s.id <= state.currentStep)
         .sort((a, b) => a.id - b.id)
 
       const accumulatedUserCode = stepsUpToCurrent
@@ -138,9 +144,9 @@ $test_output.join("\\n")
         ...s,
         lastResult: parsedResult,
         isRunning: false,
-        completedSteps: parsedResult.allPassed && !s.completedSteps.includes(s.currentStep)
-          ? [...s.completedSteps, s.currentStep]
-          : s.completedSteps,
+        completedSteps: parsedResult.allPassed
+          ? s.completedSteps.includes(s.currentStep) ? s.completedSteps : [...s.completedSteps, s.currentStep]
+          : s.completedSteps.filter(id => id !== s.currentStep),
       }))
     } catch (e) {
       console.error('Test execution error:', e)
@@ -202,7 +208,9 @@ function parseRunResult(output: string): RunResult {
   const testResults: TestResult[] = []
   let allPassed = true
 
-  for (const line of report.split('\n')) {
+  const reportLines = report.split('\n')
+  for (let i = 0; i < reportLines.length; i++) {
+    const line = reportLines[i]
     if (line.startsWith('[PASS]')) {
       testResults.push({
         description: line.substring(6).trim(),
@@ -214,12 +222,19 @@ function parseRunResult(output: string): RunResult {
       allPassed = false
       const rest = line.substring(6).trim()
       const match = rest.match(/(.+): expected=(.+), got=(.+)/)
+      // Check if the next line is an error message
+      const nextLine = reportLines[i + 1]
+      const errorMsg = nextLine?.trimStart().startsWith('Error:')
+        ? nextLine.trim().substring(7).trim()
+        : undefined
+      if (errorMsg) i++ // skip the error line
       if (match) {
         testResults.push({
           description: match[1],
           passed: false,
           expected: match[2],
           got: match[3],
+          error: errorMsg,
         })
       } else {
         testResults.push({
@@ -227,6 +242,7 @@ function parseRunResult(output: string): RunResult {
           passed: false,
           expected: '',
           got: '',
+          error: errorMsg,
         })
       }
     }

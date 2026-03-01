@@ -1,16 +1,17 @@
-class YRuby::Insns::OptPlus
-  def self.call(vm)
-    # TODO: Read both operands (topn), pop them, push the sum
-    raise NotImplementedError, "OptPlus.call not implemented"
-  end
-end
-
 module Patch
+  class OptPlus
+    def self.call(vm)
+      # TODO: Pop two values from the stack, push their sum
+      raise NotImplementedError, "OptPlus.call not implemented"
+    end
+  end
+
+  def compile_arguments_node(iseq, node)
+    # TODO: Compile each argument in order
+    raise NotImplementedError, "compile_arguments_node not implemented"
+  end
+
   def compile_binary_plus(iseq, node)
-    # In Ruby, `1 + 2` is parsed as a method call: 1.+(2)
-    # The AST looks like:
-    #   CallNode(receiver: IntegerNode(1), name: :+, arguments: ArgumentsNode([IntegerNode(2)]))
-    #
     # TODO: Compile the receiver, compile the arguments, then emit OptPlus
     raise NotImplementedError, "compile_binary_plus not implemented"
   end

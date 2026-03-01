@@ -12,17 +12,106 @@ import step7Stub from '../ruby/stubs/step7.rb?raw'
 
 export const STEPS: StepConfig[] = [
   {
+    id: 0,
+    title: 'Introduction',
+    description: h('div', { className: 'intro-content' },
+      h('h2', null, 'Welcome to the YARV Challenge!'),
+      h('p', null,
+        'In this workshop, you will implement a ', h('strong', null, 'Ruby VM (YARV)'),
+        ' and ', h('strong', null, 'compiler'), ' from scratch — step by step.',
+      ),
+      h('h3', null, 'What is YARV?'),
+      h('p', null,
+        'YARV (Yet Another Ruby VM) is the virtual machine that executes Ruby code. ',
+        'It is a ', h('strong', null, 'stack-based VM'), ': every operation pushes and pops values from a stack.',
+      ),
+      h('p', null, 'For example, ', h('code', null, '1 + 2'), ' is executed like this:'),
+      h('pre', { className: 'stack-diagram' }, h('code', null,
+        'putobject 1    putobject 2    opt_plus       leave\n' +
+        '\n' +
+        '               ┌─────┐\n' +
+        '               │  2  │\n' +
+        '┌─────┐        ├─────┤        ┌─────┐\n' +
+        '│  1  │        │  1  │        │  3  │        → 3\n' +
+        '└─────┘        └─────┘        └─────┘\n' +
+        ' stack          stack          stack        return'
+      )),
+      h('p', null,
+        h('code', null, 'leave'), ' (return the top value) is automatically added by the system — you don\'t need to implement or emit it.',
+      ),
+      h('h3', null, 'What is iseq?'),
+      h('p', null,
+        'The sequence of instructions (', h('code', null, 'putobject'), ', ', h('code', null, 'opt_plus'), ', ', h('code', null, 'leave'), ', ...) is called an ',
+        h('strong', null, 'Instruction Sequence (iseq)'), '. ',
+        'The compiler reads Ruby source code, parses it into an AST, and emits instructions into an iseq. The VM then executes the iseq from top to bottom.',
+      ),
+      h('pre', null, h('code', null,
+        'Ruby source    Compiler     iseq          VM\n' +
+        '  "1 + 2"   →  compile  →  putobject 1  →  execute\n' +
+        '                            putobject 2\n' +
+        '                            opt_plus\n' +
+        '                            leave'
+      )),
+      h('p', null,
+        'In this workshop, you will implement both sides: ',
+        h('strong', null, 'instruction behavior'), ' (what each instruction does on the VM stack) and ',
+        h('strong', null, 'compiler methods'), ' (how to emit the right instructions into an iseq).',
+      ),
+      h('h3', null, 'What is yruby?'),
+      h('p', null,
+        h('a', { href: 'https://github.com/Yuhi-Sato/yruby', target: '_blank', rel: 'noopener noreferrer' }, h('strong', null, 'yruby')), ' is a Ruby VM written in Ruby itself. ',
+        'It uses ', h('strong', null, 'Prism'), ' (Ruby\'s official parser) to parse source code into an AST. ',
+        'Your job is to ', h('strong', null, 'patch'), ' specific parts of it — the VM instructions and compiler methods.',
+      ),
+      h('h3', null, 'How "patching" works'),
+      h('p', null,
+        'All your code goes inside ', h('code', null, 'module Patch'), '. ',
+        'This module is prepended to the yruby compiler, so your methods take priority over the built-in ones.',
+      ),
+      h('pre', null, h('code', null,
+        'module Patch\n' +
+        '  # Re-open an instruction class to implement its behavior\n' +
+        '  class Putobject\n' +
+        '    def self.call(vm, value)\n' +
+        '      vm.push(value)\n' +
+        '    end\n' +
+        '  end\n' +
+        '\n' +
+        '  # Implement a compiler method\n' +
+        '  def compile_integer_node(iseq, node)\n' +
+        '    iseq.emit(Putobject, node.value)\n' +
+        '  end\n' +
+        'end'
+      )),
+      h('h3', null, 'Final Goal'),
+      h('p', null, 'By Step 7, you will be able to run:'),
+      h('pre', null, h('code', null,
+        'def fib(n)\n' +
+        '  if n < 2\n' +
+        '    n\n' +
+        '  else\n' +
+        '    fib(n - 1) + fib(n - 2)\n' +
+        '  end\n' +
+        'end\n' +
+        'fib(10)  # => 55'
+      )),
+      h('p', null,
+        'Click ', h('strong', null, 'Start Challenge'), ' below to begin!',
+      ),
+    ),
+    instructions: '',
+    stub: '',
+    testCases: [],
+  },
+
+  {
     id: 1,
     title: 'Step 1: Integer Literals',
     description: h('div', null,
       h('h2', null, 'Step 1: Push Literals onto the Stack'),
-      h('p', null,
-        'YARV is a ', h('strong', null, 'stack machine'), '. Every value flows through a stack of fixed size.'
-      ),
-      h('h3', null, 'VM: Putobject'),
+      h('h3', null, 'Instruction: Putobject'),
       h('ul', null,
         h('li', null, h('code', null, 'putobject'), ' pushes a literal value onto the stack'),
-        h('li', null, 'Use ', h('code', null, 'vm.push(value)'), ' to push'),
       ),
       h('h3', null, 'Compiler: compile_integer_node'),
       h('p', null,
@@ -30,14 +119,13 @@ export const STEPS: StepConfig[] = [
       ),
       h('ul', null,
         h('li', null, h('code', null, 'Prism::IntegerNode'), ' represents a literal integer (e.g. ', h('code', null, '42'), ')'),
-        h('li', null, h('code', null, 'node.value'), ' holds the integer — emit ', h('code', null, 'iseq.emit(Putobject, node.value)')),
+        h('li', null, h('code', null, 'node.value'), ' holds the integer'),
       ),
     ),
     instructions: 'putobject · compile_integer_node',
     stub: step1Stub,
     hints: [
-      'vm.push(x) places a value on top of the stack. iseq.emit(InsnClass, *operands) appends an instruction to the instruction sequence.',
-      'Putobject: vm.push(value) — Compiler: iseq.emit(YRuby::Insns::Putobject, node.value)',
+      'vm.push(x) places a value on top of the stack.\niseq.emit(Insn, *args) appends an instruction to the iseq.',
     ],
     testCases: [
       { description: '42 → 42', source: '42', expected: 42 },
@@ -52,38 +140,49 @@ export const STEPS: StepConfig[] = [
     title: 'Step 2: Addition',
     description: h('div', null,
       h('h2', null, 'Step 2: Arithmetic — Addition'),
-      h('h3', null, 'VM: OptPlus'),
-      h('ul', null,
-        h('li', null, h('code', null, 'opt_plus'), ' pops two values and pushes their sum'),
-        h('li', null,
-          'Stack peek: ', h('code', null, 'vm.topn(2)'), ' = left (a), ',
-          h('code', null, 'vm.topn(1)'), ' = right (b)'
-        ),
-        h('li', null, 'Pop both, then push ', h('code', null, 'a + b')),
+      h('h3', null, 'Instruction: OptPlus'),
+      h('p', null,
+        h('code', null, 'opt_plus'), ' pops two values and pushes their sum. ',
+        'The compiler pushes ', h('strong', null, 'receiver first, then arguments'),
+        ', so the stack looks like:',
       ),
-      h('h3', null, 'Compiler: compile_binary_plus'),
+      h('pre', { className: 'stack-diagram' }, h('code', null,
+        '┌─────┐\n' +
+        '│  2  │  ← argument (top)\n' +
+        '├─────┤\n' +
+        '│  1  │  ← receiver\n' +
+        '└─────┘'
+      )),
+      h('h3', null, 'Compiler: compile_arguments_node'),
       h('p', null,
         'In Ruby, ', h('code', null, '1 + 2'), ' is actually a method call: ', h('code', null, '1.+(2)'), '. ',
         'Prism parses it as a ', h('code', null, 'CallNode'), ':'
       ),
       h('pre', null, h('code', null,
-        'CallNode\n  receiver: IntegerNode(1)   # left operand\n  name: :+\n  arguments: ArgumentsNode\n    [IntegerNode(2)]          # right operand'
+        'CallNode\n  receiver: IntegerNode   # left operand\n  name: :+\n  arguments: ArgumentsNode  # right operand'
       )),
       h('p', null,
-        'Your job: compile each part of the AST in order. Use ', h('code', null, 'compile_node(iseq, node)'),
-        ' to recursively compile any node — it dispatches to the right method (e.g. ', h('code', null, 'compile_integer_node'), ' for IntegerNode).'
+        h('code', null, 'ArgumentsNode'), ' is a container that holds a list of arguments. ',
+        h('code', null, 'node.arguments'), ' returns an array of child nodes. ',
+        'Use ', h('code', null, 'compile_node(iseq, node)'),
+        ' to recursively compile each one — it dispatches to the right method (e.g. ', h('code', null, 'compile_integer_node'), ' for IntegerNode).',
+      ),
+      h('h3', null, 'Compiler: compile_binary_plus'),
+      h('p', null,
+        'This method compiles ', h('code', null, '+'), ' expressions like ', h('code', null, '1 + 2'),
+        ' into the instructions that push both values and then run ', h('code', null, 'OptPlus'), '.',
       ),
       h('ul', null,
-        h('li', null, h('code', null, 'node.receiver'), ' — the left operand'),
-        h('li', null, h('code', null, 'node.arguments'), ' — the right operand(s)'),
+        h('li', null, h('code', null, 'node.receiver'), ' — the left operand (IntegerNode)'),
+        h('li', null, h('code', null, 'node.arguments'), ' — the right operand(s) (ArgumentsNode)'),
         h('li', null, 'Then emit ', h('code', null, 'OptPlus'), ' to add them'),
       ),
     ),
-    instructions: 'opt_plus · compile_binary_plus',
+    instructions: 'opt_plus · compile_arguments_node · compile_binary_plus',
     stub: step2Stub,
     hints: [
-      'For "1 + 2", the stack before opt_plus is [1, 2]. topn(2) = 1 (left), topn(1) = 2 (right). Pop both, push their sum. For the compiler, think about what needs to be on the stack before OptPlus runs.',
-      'OptPlus: b = vm.pop; a = vm.pop; vm.push(a + b) — Compiler: compile_node(iseq, node.receiver); compile_node(iseq, node.arguments); iseq.emit(YRuby::Insns::OptPlus)',
+      'compile_arguments_node:\n  node.arguments is an array.\n  Compile each child with compile_node.\n\nFor OptPlus, the stack before execution is [1, 2].\nPop two values, push their sum.',
+      'OptPlus:\n  a = vm.pop\n  b = vm.pop\n  vm.push(b + a)\n\ncompile_arguments_node:\n  node.arguments.each { |arg| compile_node(iseq, arg) }\n\ncompile_binary_plus:\n  compile_node(iseq, node.receiver)\n  compile_node(iseq, node.arguments)\n  iseq.emit(OptPlus)',
     ],
     testCases: [
       { description: '1 + 2 = 3', source: '1 + 2', expected: 3 },
@@ -98,11 +197,20 @@ export const STEPS: StepConfig[] = [
     title: 'Step 3: Subtraction',
     description: h('div', null,
       h('h2', null, 'Step 3: Arithmetic — Subtraction'),
-      h('h3', null, 'VM: OptMinus'),
-      h('ul', null,
-        h('li', null, h('code', null, 'opt_minus'), ': peek a = ', h('code', null, 'topn(2)'), ', b = ', h('code', null, 'topn(1)'), ', push ', h('code', null, 'a − b')),
-        h('li', null, h('strong', null, 'Order matters!'), ' a − b, not b − a'),
+      h('h3', null, 'Instruction: OptMinus'),
+      h('p', null,
+        h('code', null, 'opt_minus'), ' pops two values and pushes their difference. ',
+        h('strong', null, 'Order matters!'), ' The stack is the same as Step 2 — receiver first, argument on top:',
       ),
+      h('pre', { className: 'stack-diagram' }, h('code', null,
+        '┌─────┐\n' +
+        '│  3  │  ← argument (top)\n' +
+        '├─────┤\n' +
+        '│ 10  │  ← receiver\n' +
+        '└─────┘\n' +
+        '\n' +
+        'Result: 10 - 3 = 7 (receiver − argument)'
+      )),
       h('h3', null, 'Compiler: compile_binary_minus'),
       h('p', null,
         h('code', null, '10 - 3'), ' is also a CallNode: ', h('code', null, '10.-(3)'),
@@ -112,8 +220,8 @@ export const STEPS: StepConfig[] = [
     instructions: 'opt_minus · compile_binary_minus',
     stub: step3Stub,
     hints: [
-      'Same stack pattern as Step 2, but compute a - b. topn(2) is the left operand. Order matters! The compiler pattern is identical to compile_binary_plus.',
-      'OptMinus: b = vm.pop; a = vm.pop; vm.push(a - b) — Compiler: compile_node(iseq, node.receiver); compile_node(iseq, node.arguments); iseq.emit(YRuby::Insns::OptMinus)',
+      'Same stack pattern as Step 2, but compute a - b.\nPop order matters!\n\nThe compiler pattern is identical to compile_binary_plus.',
+      'OptMinus:\n  a = vm.pop\n  b = vm.pop\n  vm.push(b - a)\n\nCompiler:\n  compile_node(iseq, node.receiver)\n  compile_node(iseq, node.arguments)\n  iseq.emit(OptMinus)',
     ],
     testCases: [
       { description: '10 - 3 = 7', source: '10 - 3', expected: 7 },
@@ -128,22 +236,54 @@ export const STEPS: StepConfig[] = [
     title: 'Step 4: Local Variables',
     description: h('div', null,
       h('h2', null, 'Step 4: Local Variable Storage'),
-      h('h3', null, 'EP-Relative Addressing'),
+      h('h3', null, 'How locals are stored'),
       h('p', null,
-        'Locals live in the stack, addressed via the ',
-        h('strong', null, 'EP (Environment Pointer)'),
-        ':'
+        'Local variables live inside the VM stack. Two pointers manage it:',
       ),
       h('ul', null,
-        h('li', null, h('code', null, 'env_read(-idx)'), ' → read local at index idx'),
-        h('li', null, h('code', null, 'env_write(-idx, val)'), ' → write local at index idx'),
-        h('li', null, 'Internally: ', h('code', null, 'stack[ep + (-idx)]')),
+        h('li', null, h('strong', null, 'SP (Stack Pointer)'), ' — top of the stack (where push/pop happen)'),
+        h('li', null, h('strong', null, 'EP (Environment Pointer)'), ' — always at ', h('code', null, 'SP - 1'), ', locals are below EP'),
       ),
-      h('h3', null, 'VM: Getlocal / Setlocal'),
+      h('p', null,
+        'For ', h('code', null, 'x = 5; y = 10; x + y'), ':',
+      ),
+      h('pre', { className: 'stack-diagram' }, h('code', null,
+        '     ┌───────────┐\n' +
+        'SP → │           │  ← push/pop happen here\n' +
+        '     ├───────────┤\n' +
+        'EP → │  y = 10   │  ← offset 0  (newer)\n' +
+        '     ├───────────┤\n' +
+        '     │  x = 5    │  ← offset 1  (older)\n' +
+        '     └───────────┘\n' +
+        '\n' +
+        'EP = SP - 1'
+      )),
+      h('p', null,
+        'Instructions access locals by offset from EP. The older a variable, the larger its offset.',
+      ),
+      h('h3', null, 'Instruction: Getlocal / Setlocal'),
       h('ul', null,
-        h('li', null, h('strong', null, 'Getlocal(idx)'), ': read ', h('code', null, 'env_read(-idx)'), ', push it'),
-        h('li', null, h('strong', null, 'Setlocal(idx)'), ': pop a value, write it with ', h('code', null, 'env_write(-idx, val)')),
+        h('li', null, h('strong', null, 'Getlocal(idx)'), ': read the local at offset idx, push it onto the stack'),
+        h('li', null, h('strong', null, 'Setlocal(idx)'), ': pop a value, store it at offset idx'),
       ),
+      h('h3', null, 'Instruction: Dup'),
+      h('p', null,
+        'Why is ', h('code', null, 'dup'), ' needed? In Ruby, ', h('strong', null, 'assignment is an expression'), ' that returns the assigned value:',
+      ),
+      h('pre', null, h('code', null, 'p(x = 5)  # prints 5 — the assignment itself returns 5')),
+      h('p', null,
+        'So ', h('code', null, 'x = 5'), ' must leave ', h('code', null, '5'), ' on the stack as its return value, while also storing it into the local variable. ',
+        h('code', null, 'dup'), ' duplicates the top of the stack so one copy goes to ', h('code', null, 'Setlocal'), ' and the other remains as the expression\'s result.',
+      ),
+      h('pre', { className: 'stack-diagram' }, h('code', null,
+        'putobject 5    dup            setlocal 0\n' +
+        '\n' +
+        '               ┌─────┐\n' +
+        '               │  5  │  (copy)\n' +
+        '┌─────┐        ├─────┤        ┌─────┐\n' +
+        '│  5  │        │  5  │        │  5  │  ← remains as return value\n' +
+        '└─────┘        └─────┘        └─────┘'
+      )),
       h('h3', null, 'Compiler: compile_local_var_read / write'),
       h('p', null,
         h('code', null, 'compile_local_var_read'), ' compiles ', h('code', null, 'Prism::LocalVariableReadNode'), ' (variable references like ', h('code', null, 'x'), ') into a ', h('code', null, 'Getlocal'), ' instruction. ',
@@ -154,11 +294,11 @@ export const STEPS: StepConfig[] = [
         h('li', null, 'For write: compile value, emit ', h('code', null, 'Dup'), ', then ', h('code', null, 'Setlocal')),
       ),
     ),
-    instructions: 'getlocal · setlocal · compile_local_var_read · compile_local_var_write',
+    instructions: 'dup · getlocal · setlocal · compile_local_var_read · compile_local_var_write',
     stub: step4Stub,
     hints: [
-      'Getlocal pushes env_read(-idx) onto the stack. Setlocal pops and stores with env_write(-idx, val). In the compiler, @index_lookup_table[node.name] gives the variable index.',
-      'Getlocal: vm.push(vm.env_read(-idx)) — Setlocal: vm.env_write(-idx, vm.pop) — compile_local_var_write: compile node.value, then emit Dup, then emit Setlocal with the index',
+      'Dup: peek the top of the stack and push a copy.\n\nGetlocal: read the local and push it.\nSetlocal: pop a value and store it.\n\nIn the compiler, @index_lookup_table[node.name] gives the variable index.',
+      'Dup:\n  vm.push(vm.topn(1))\n\nGetlocal:\n  vm.push(vm.env_read(-idx))\n\nSetlocal:\n  vm.env_write(-idx, vm.pop)\n\ncompile_local_var_write:\n  compile node.value\n  emit Dup\n  emit Setlocal with the index',
     ],
     testCases: [
       { description: 'x = 5; x → 5', source: 'x = 5; x', expected: 5 },
@@ -172,9 +312,9 @@ export const STEPS: StepConfig[] = [
     title: 'Step 5: Comparison',
     description: h('div', null,
       h('h2', null, 'Step 5: Comparison — Less Than'),
-      h('h3', null, 'VM: OptLt'),
+      h('h3', null, 'Instruction: OptLt'),
       h('ul', null,
-        h('li', null, h('code', null, 'opt_lt'), ': peek a = ', h('code', null, 'topn(2)'), ', b = ', h('code', null, 'topn(1)'), ', push ', h('code', null, 'a < b')),
+        h('li', null, h('code', null, 'opt_lt'), ' pops two values and pushes the comparison result (', h('code', null, 'a < b'), ')'),
         h('li', null, 'Same pattern as ', h('code', null, 'opt_plus'), ' / ', h('code', null, 'opt_minus')),
       ),
       h('h3', null, 'Compiler: compile_binary_lt'),
@@ -189,8 +329,8 @@ export const STEPS: StepConfig[] = [
     instructions: 'opt_lt · compile_binary_lt',
     stub: step5Stub,
     hints: [
-      'Same stack pattern as opt_plus / opt_minus, but push the boolean result of a < b. The compiler pattern is identical to Steps 2 and 3.',
-      'OptLt: b = vm.pop; a = vm.pop; vm.push(a < b) — Compiler: compile_node(iseq, node.receiver); compile_node(iseq, node.arguments); iseq.emit(YRuby::Insns::OptLt)',
+      'Same stack pattern as OptPlus / OptMinus,\nbut push the boolean result of a < b.\n\nThe compiler pattern is identical to Steps 2 and 3.',
+      'OptLt:\n  a = vm.pop\n  b = vm.pop\n  vm.push(b < a)\n\nCompiler:\n  compile_node(iseq, node.receiver)\n  compile_node(iseq, node.arguments)\n  iseq.emit(OptLt)',
     ],
     testCases: [
       { description: '3 < 5 → true', source: '3 < 5', expected: true },
@@ -211,33 +351,36 @@ export const STEPS: StepConfig[] = [
       ),
       h('pre', null, h('code', null, 'insn = iseq.fetch(pc)\npc += insn::LEN    ← advanced first\ninsn.call(vm, ...)  ← then executed')),
       h('p', null,
-        'Branch instructions use ', h('strong', null, 'relative offsets'), ': ',
-        h('code', null, 'vm.add_pc(dst)'), ' adjusts PC by dst from the current position.'
+        'Branch instructions use ', h('strong', null, 'relative offsets'),
+        ' to adjust PC from the current position.',
       ),
-      h('h3', null, 'VM: Branchunless'),
+      h('h3', null, 'Instruction: Branchunless'),
       h('ul', null,
-        h('li', null, 'Pop condition; if ', h('strong', null, 'falsy'), ' (nil or false), ', h('code', null, 'vm.add_pc(dst)'))
+        h('li', null, 'Pop condition; if ', h('strong', null, 'falsy'), ' (nil or false), jump by the given offset'),
       ),
-      h('h3', null, 'VM: Jump'),
+      h('h3', null, 'Instruction: Jump'),
       h('ul', null,
-        h('li', null, 'Unconditionally ', h('code', null, 'vm.add_pc(dst)'))
+        h('li', null, 'Unconditionally jump by the given offset'),
       ),
       h('h3', null, 'Compiler: compile_conditional_node'),
       h('p', null,
         'This method compiles ', h('code', null, 'Prism::IfNode'), ' (if/else expressions) into a sequence of ', h('code', null, 'Branchunless'), ' and ', h('code', null, 'Jump'), ' instructions.'
       ),
       h('p', null,
-        'Use ', h('strong', null, 'forward-reference patching'), ': reserve space first, fill in jump offsets once target positions are known.'
+        'The challenge: when you emit ', h('code', null, 'Branchunless'), ', you don\'t yet know how far to jump — the else-branch hasn\'t been compiled yet. ',
+        'Use ', h('strong', null, 'forward-reference patching'), ': reserve space with a placeholder, compile the branches, then go back and fill in the correct offset.'
       ),
-      h('pre', null, h('code', null,
-        '# 1. Compile predicate\ncompile_node(iseq, node.predicate)\n\n# 2. Reserve Branchunless slot\nbr_pc = iseq.size\niseq.emit_placeholder(YRuby::Insns::Branchunless::LEN)\n\n# 3. Compile then-branch\ncompile_node(iseq, node.statements)\n\n# 4. Reserve Jump slot (skip else)\nthen_end_pc = iseq.size\niseq.emit_placeholder(YRuby::Insns::Jump::LEN)\n\n# 5. Patch Branchunless → else label\nelse_label = iseq.size\nbr_offset = else_label - (br_pc + Branchunless::LEN)\niseq.patch_at!(br_pc, Branchunless, br_offset)\n\n# 6. Compile else-branch\n# node.consequent is ElseNode → compile_node(iseq, node.consequent.statements)\n# node.consequent is IfNode  → compile_conditional_node(iseq, node.consequent)\n\n# 7. Patch Jump → end label\nend_label = iseq.size\njump_offset = end_label - (then_end_pc + Jump::LEN)\niseq.patch_at!(then_end_pc, Jump, jump_offset)'
-      )),
+      h('p', null,
+        'AST: ', h('code', null, 'node.predicate'), ' (condition), ',
+        h('code', null, 'node.statements'), ' (then-branch), ',
+        h('code', null, 'node.consequent'), ' (else-branch — may be ElseNode or nested IfNode).',
+      ),
     ),
     instructions: 'branchunless · jump · compile_conditional_node',
     stub: step6Stub,
     hints: [
-      'Branchunless: pop the condition (topn(1) then pop), call vm.add_pc(dst) only if the value was falsy. Jump: always call vm.add_pc(dst). The full compiler algorithm is shown in the tutorial panel.',
-      'Branchunless: val = vm.pop; vm.add_pc(dst) unless val — Jump: vm.add_pc(dst) — Compiler: follow the 7-step patching algorithm in the tutorial exactly',
+      'Branchunless: pop the condition, if falsy adjust PC by the offset.\nJump: always adjust PC by the offset.\n\nFor the compiler, use emit_placeholder to reserve space,\nthen patch_at! to fill in the offset once you know the target.',
+      'Compiler steps:\n  1. compile predicate\n  2. emit_placeholder for Branchunless\n  3. compile then-branch\n  4. emit_placeholder for Jump\n  5. patch Branchunless → else label\n  6. compile else-branch\n  7. patch Jump → end label\n\nOffset = target - (placeholder_pc + Insn::LEN)',
     ],
     testCases: [
       { description: 'true branch', source: 'if 3 < 5; 10; else; 20; end', expected: 10 },
@@ -251,14 +394,13 @@ export const STEPS: StepConfig[] = [
     title: 'Step 7: Methods & Fibonacci!',
     description: h('div', null,
       h('h2', null, 'Step 7: Method Definition and Calling'),
-      h('h3', null, 'VM: Definemethod'),
+      h('h3', null, 'Instruction: Definemethod'),
       h('ul', null,
-        h('li', null, 'Register method iseq on current class'),
-        h('li', null, 'Use ', h('code', null, 'vm.define_method(mid, iseq)')),
+        h('li', null, 'Register a method\'s iseq on the current class with a given name'),
       ),
-      h('h3', null, 'VM: OptSendWithoutBlock'),
+      h('h3', null, 'Instruction: OptSendWithoutBlock'),
       h('ul', null,
-        h('li', null, h('code', null, 'vm.sendish(cd)'), ' dispatches the method call'),
+        h('li', null, 'Dispatch a method call using call data (method name + argument count)'),
         h('li', null, 'Sets up a new frame with receiver + arguments'),
         h('li', null, 'The method\'s Leave instruction pushes the return value'),
       ),
@@ -286,8 +428,8 @@ export const STEPS: StepConfig[] = [
     instructions: 'definemethod · opt_send_without_block · compile_def_node · compile_general_call',
     stub: step7Stub,
     hints: [
-      'Definemethod: vm.define_method(mid, iseq) — OptSendWithoutBlock: vm.sendish(cd) — compile_def_node: create a method iseq with YRuby::Iseq.iseq_new_method(node), then emit Definemethod and Putobject(node.name).',
-      'compile_general_call: emit Putself, compile each argument with compile_node, then emit OptSendWithoutBlock with YRuby::CallData.new(mid: node.name, argc: node.arguments.arguments.length)',
+      'Definemethod:\n  vm.define_method(mid, iseq)\n\nOptSendWithoutBlock:\n  vm.sendish(cd)\n\ncompile_def_node:\n  create method iseq with YRuby::Iseq.iseq_new_method(node)\n  emit Definemethod(node.name, method_iseq)\n  emit Putobject(node.name)',
+      'compile_general_call:\n  emit Putself\n  compile each argument with compile_node\n  emit OptSendWithoutBlock with\n    YRuby::CallData.new(\n      mid: node.name,\n      argc: node.arguments.arguments.length\n    )',
     ],
     testCases: [
       {

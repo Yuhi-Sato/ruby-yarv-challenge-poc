@@ -149,6 +149,7 @@
   line-height: 1.55;
   font-family: 'Courier New', monospace;
   word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .hint-btn {
@@ -194,7 +195,20 @@
   background: #ffe8e8;
 }
 
-/* ---- VM API table ---- */
+/* ---- API section titles ---- */
+
+.api-section-title {
+  margin: 0.75rem 0 0.15rem 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #5a0000;
+}
+
+.api-section-title:first-of-type {
+  margin-top: 0.4rem;
+}
+
+/* ---- API table ---- */
 
 .api-table {
   width: 100%;

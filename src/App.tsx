@@ -9,15 +9,18 @@ import { ResultPane } from './components/ResultPane'
 import { STEPS } from './steps'
 import './App.css'
 
-const VM_API_LINES = [
+const API_LINES = [
+  '# VM (instruction implementation)',
   'vm.push(x)            # Push value onto stack',
   'vm.pop                # Pop and return top value',
   'vm.topn(n)            # Peek nth from top (1 = top)',
   'vm.env_read(-idx)     # Read local variable at idx',
   'vm.env_write(-idx, v) # Write local variable at idx',
-  'vm.add_pc(offset)     # Adjust PC by offset (for branches)',
-  'vm.define_method(m, iseq)  # Register method on class',
-  'vm.sendish(cd)        # Dispatch method call',
+  'vm.add_pc(offset)     # Adjust PC by offset (branches)',
+  '',
+  '# Iseq (compiler implementation)',
+  'iseq.emit(Insn, *args)  # Append instruction',
+  'iseq.size               # Current iseq size',
 ]
 
 function App() {
@@ -46,8 +49,8 @@ function App() {
         <div className="spinner" />
         <p className="loading-msg">Loading ruby.wasm…</p>
         <div className="loading-api">
-          <p className="loading-api-title">VM API you'll use:</p>
-          <pre className="loading-api-code">{VM_API_LINES.join('\n')}</pre>
+          <p className="loading-api-title">API you'll use:</p>
+          <pre className="loading-api-code">{API_LINES.join('\n')}</pre>
         </div>
       </div>
     )
@@ -76,39 +79,48 @@ function App() {
         onStepChange={goToStep}
       />
 
-      {currentStep && (
-        <Layout
-          left={<TutorialPane step={currentStep} result={state.lastResult} />}
-          center={
-            <EditorPane
-              code={state.userCode[state.currentStep] ?? currentStep.stub}
-              onChange={updateCode}
-              onReset={() => updateCode(currentStep.stub)}
-              isRunning={state.isRunning}
-            />
-          }
-          right={
-            <ResultPane
-              result={state.lastResult}
-              expectedBytecode={currentStep.bytecodePreview}
-              onNextStep={() => goToStep(state.currentStep + 1)}
-              isLastStep={state.currentStep === STEPS[STEPS.length - 1].id}
-            />
-          }
-        />
-      )}
+      {currentStep && state.currentStep === 0 ? (
+        <div className="intro-fullwidth">
+          <TutorialPane step={currentStep} result={null} />
+          <button className="start-btn" onClick={() => goToStep(1)}>
+            Start Challenge →
+          </button>
+        </div>
+      ) : currentStep ? (
+        <>
+          <Layout
+            left={<TutorialPane step={currentStep} result={state.lastResult} />}
+            center={
+              <EditorPane
+                code={state.userCode[state.currentStep] ?? currentStep.stub}
+                onChange={updateCode}
+                onReset={() => updateCode(currentStep.stub)}
+                isRunning={state.isRunning}
+              />
+            }
+            right={
+              <ResultPane
+                result={state.lastResult}
+                expectedBytecode={currentStep.bytecodePreview}
+                onNextStep={() => goToStep(state.currentStep + 1)}
+                isLastStep={state.currentStep === STEPS[STEPS.length - 1].id}
+              />
+            }
+          />
 
-      <footer className="app-footer">
-        <button
-          ref={runButtonRef}
-          className="run-button"
-          onClick={runTests}
-          disabled={state.isRunning}
-        >
-          {state.isRunning ? '⏳ Running...' : '▶ Run Tests'}
-        </button>
-        <span className="shortcut-hint">Ctrl+Enter / Cmd+Enter</span>
-      </footer>
+          <footer className="app-footer">
+            <button
+              ref={runButtonRef}
+              className="run-button"
+              onClick={runTests}
+              disabled={state.isRunning}
+            >
+              {state.isRunning ? '⏳ Running...' : '▶ Run Tests'}
+            </button>
+            <span className="shortcut-hint">Ctrl+Enter / Cmd+Enter</span>
+          </footer>
+        </>
+      ) : null}
     </div>
   )
 }
