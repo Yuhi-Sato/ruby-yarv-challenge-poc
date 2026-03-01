@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v4
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: '4.0'
           bundler-cache: true
